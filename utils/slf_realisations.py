@@ -12,9 +12,9 @@ def compare_variations():
     p = slf.FPPProcess()
     ps = slf.SDEProcess()
     kern = ['1exp', 'power', '1exp']  # 'power', '1exp'
-    tw = ['cluster', 'exp', 'var_rate']  # 'exp', 'var_rate', 'ray', 'cluster'
-    g = 10.
-    K = 100000
+    tw = ['exp', 'exp', 'var_rate']  # 'exp', 'var_rate', 'ray', 'cluster'
+    g = 1.
+    K = 10000
     dt = .01
     for k, TW in zip(kern, tw):
         print(k, TW)
@@ -36,13 +36,13 @@ def slf_amplitude():
 
 def sde_change_gamma():
     N = int(1e5)
-    dt = 1e-3
+    dt = 1e-1
     gamma = [.01, .1, 1., 10.]
     # K = N * gamma * dt
     p = slf.SDEProcess()
     plt.figure()
     for i, g in enumerate(gamma):
-        plt.subplot(len(gamma), 1, i + 1)
+        plt.subplot(2, 2, i + 1)
         p.set_params(gamma=g, K=int(N * g * dt), dt=dt)
         s = p.create_realisation(fit=False)
         # print(s)
@@ -53,5 +53,5 @@ def sde_change_gamma():
     plt.show()
 
 if __name__ == '__main__':
-    # sde_change_gamma()
-    compare_variations()
+    sde_change_gamma()
+    # compare_variations()

@@ -14,7 +14,7 @@ For small γ, however, it displays a range of scaling in the power law with slop
 
 from abc import ABC, abstractmethod, abstractproperty
 import sys
-sys.path.append('..')
+sys.path.append('/home/een023/uit_scripts')
 import time
 
 import numpy as np
@@ -189,7 +189,7 @@ class SDEProcess(Process):
         # x = rate_process(x0=1e-9, gamma=self.gamma)(timeline)  # pylint: disable=E1102,E1123,E1120
         # x = x.reshape((-1,))
 
-        x = rksde.SDE_SLE(self.dt, int(self.T / self.dt), x0=self.gamma, gamma=self.gamma)
+        x = rksde.SDE_SLE(self.dt, int(self.T / self.dt), x0=self.gamma, gamma=self.gamma, log=True)
         # x = (x - x.mean()) / x.std()
         t = np.arange(self.T / self.dt) * self.dt
         if fit:
@@ -235,8 +235,9 @@ class FPPProcess(Process):
                           'lorentz': 2,
                           'gauss': 3,
                           'sech': 4,
-                          '1exp2s': 5,
-                          'power': 6}
+                          'power': 5#,
+                        #   '1exp2s': 6
+                          }
         self.kern = '1exp'
         self.tw = 'exp'
 
@@ -251,7 +252,7 @@ class FPPProcess(Process):
         docstring
         """
         kinds = ['cluster', 'var_rate', 'cox']  # 'exp', 'gam',
-        assert self.tw in kinds, f'The "kind" must be on of {kinds}'
+        assert self.tw in kinds, f'The "kind" must be on of {kinds}, not {self.tw}'
         if self.tw == 'cluster':
             x, _ = make_blobs(n_samples=self.K, centers=100, cluster_std=.1, n_features=1, random_state=0)
             x = x.reshape((-1,))
