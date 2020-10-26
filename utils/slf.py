@@ -135,7 +135,7 @@ class Process(ABC):
             try:
                 plt_func = getattr(self, key)
             except AttributeError:
-                print(f'No plots made. "{plot}" is not an attribute of Process.')
+                print(f'No plots made. "{key}" is not an attribute of Process.')
             else:
                 plt_func(parameter=parameter)
         # if all_plots:
@@ -181,7 +181,7 @@ class Process(ABC):
         else:
             if isinstance(parameter, np.ndarray):
                 tools.psd(parameter)
-            elif isinstance(parameter, list):
+            elif isinstance(parameter, tuple):
                 tools.psd(parameter[-1])
 
     def plot_pdf(self, parameter=None):
@@ -191,7 +191,7 @@ class Process(ABC):
         else:
             if isinstance(parameter, np.ndarray):
                 tools.pdf(parameter)
-            elif isinstance(parameter, list):
+            elif isinstance(parameter, tuple):
                 tools.pdf(parameter[-1])
 
 
