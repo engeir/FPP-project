@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import stats
 import scipy.signal as ssi
 import scipy.optimize as scop
 import scipy.integrate as si
@@ -165,7 +166,7 @@ def est_corr(signal):
     plt.legend()
 
 
-def est_psd(signal, *args, new_fig=True):
+def psd(signal, *args, new_fig=True):
     """Estimate the power spectral density of `signal`.
 
     Args:
@@ -183,7 +184,7 @@ def est_psd(signal, *args, new_fig=True):
     if len(args) == 0:
         args = ['loglog']
     for kind in args:
-        if new_fig:
+        if new_fig or len(args) > 1:
             plt.figure()
             plt.title(f'psd - {kind}')
         plot = getattr(plt, kind)
@@ -206,4 +207,33 @@ def est_psd(signal, *args, new_fig=True):
 
         plt.xlabel('f')
         plt.ylabel('PSD')
+        plt.legend()
+
+
+def pdf(signal, *args, new_fig=True):
+    """Estimate the PDF of `signal`.
+
+    Args:
+        signal (np.ndarray): the signal that is analyzed
+        *args (str): optional arguments that create `n` different
+            plots from the `matplotlib.pyplot` library,
+            e.g. `plot`, `loglog`, etc. Defaults to `loglog`.
+        new_fig (bool, optional): a new figure is created, set to False
+            if you want to just call the plot commands. Defaults to True.
+    """
+    bins = np.linspace(-5, 5, 30)
+    histogram, bins = np.histogram(signal, bins=bins, density=True)
+    bin_centers = 0.5*(bins[1:] + bins[:-1])
+    # Compute the PDF on the bin centers from scipy distribution object
+    norm_pdf = stats.norm.pdf(bin_centers)
+
+    if len(args) == 0:
+        args = ['plot']
+    for kind in args:
+        if new_fig or len(args) > 1:
+            plt.figure()
+            plt.title(f'pdf - {kind}')
+        plot = getattr(plt, kind)
+        plot(bin_centers, histogram, label="Histogram of samples")
+        plot(bin_centers, norm_pdf, label="PDF")
         plt.legend()
