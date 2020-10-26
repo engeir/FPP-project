@@ -128,21 +128,28 @@ class Process(ABC):
             np.ndarray: see specific classes for number of outputs
         """
 
-    def plot_realisation(self, all_plots=False, real=False, psd=False):
+    def plot_realisation(self, *plot, parameter=None):  #, all_plots=False, real=False, psd=False):
         """Plot arrays created by a realisation of the process.
         """
-        if all_plots:
-            arr = self.create_realisation()
-            self.plotter(*arr)
-            self.plot_psd(arr[-1])
-        elif real:
-            arr = self.create_realisation()
-            self.plotter(*arr)
-        elif psd:
-            arr = self.create_realisation(fit=False)
-            self.plot_psd(arr[-1])
-        else:
-            print('No plots made.')
+        for key in plot:
+            try:
+                plt_func = getattr(self, key)
+            except AttributeError:
+                print(f'No plots made. "{plot}" is not an attribute of Process.')
+            else:
+                plt_func(parameter=parameter)
+        # if all_plots:
+        #     arr = self.create_realisation()
+        #     self.plotter(*arr)
+        #     self.plot_psd(arr[-1])
+        # elif real:
+        #     arr = self.create_realisation()
+        #     self.plotter(*arr)
+        # elif psd:
+        #     arr = self.create_realisation(fit=False)
+        #     self.plot_psd(arr[-1])
+        # else:
+        #     print('No plots made.')
 
     @staticmethod
     @abstractmethod
@@ -150,13 +157,42 @@ class Process(ABC):
         """Plotter method.
         """
 
+    def plot_all(self, parameter=None):
+        if parameter is None:
+            parameter = self.create_realisation()
+            self.plotter(*parameter)
+            self.plot_psd(parameter[-1])
+        else:
+            self.plotter(*parameter)
+            self.plot_psd(parameter[-1])
+
+    def plot_real(self, parameter=None):
+        if parameter is None:
+            parameter = self.create_realisation()
+            self.plotter(*parameter)
+        else:
+            self.plotter(*parameter)
+
     def plot_psd(self, parameter=None):
         # TODO: probably need to send self.dt into psd calculation (compare with jupyter nb)
         if parameter is None:
             parameter = self.create_realisation(fit=False)
-            tools.est_psd(parameter[-1])
+            tools.psd(parameter[-1])
         else:
-            tools.est_psd(parameter)
+            if isinstance(parameter, np.ndarray):
+                tools.psd(parameter)
+            elif isinstance(parameter, list):
+                tools.psd(parameter[-1])
+
+    def plot_pdf(self, parameter=None):
+        if parameter is None:
+            parameter = self.create_realisation(fit=False)
+            tools.pdf(parameter[-1])
+        else:
+            if isinstance(parameter, np.ndarray):
+                tools.pdf(parameter)
+            elif isinstance(parameter, list):
+                tools.pdf(parameter[-1])
 
 
 class SDEProcess(Process):
@@ -240,12 +276,6 @@ class FPPProcess(Process):
                           }
         self.kern = '1exp'
         self.tw = 'exp'
-
-    # def get_params(self):
-    #     """
-    #     docstring
-    #     """
-    #     print(self.__dict__)
 
     def create_forcing(self):
         """
@@ -369,10 +399,10 @@ if __name__ == '__main__':
     # for k, t in zip(kern, tw):
     #     print(k, t)
     #     p.set_params(gamma=1., K=1000, kern=k, snr=.0, tw=t, dt=0.01)
-    #     p.plot_realisation(psd=True)
+    #     p.plot_realisation('plot_psd')  #=True)
     # p.set_params(gamma=1., kern='1exp', snr=.0, tw='var_rate')
     # p.create_forcing()
-    # p.plot_realisation()
+    # p.plot_realisation('plot_all')
     # p.plot_psd()
 
     # # r_n = Realisation()
