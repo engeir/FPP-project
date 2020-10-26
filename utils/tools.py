@@ -194,16 +194,16 @@ def psd(signal, *args, new_fig=True):
         for nperseg in 2**np.array([13, 10, 7]):
             f, S_Xn = ssi.welch(Xn, fs=1., nperseg=nperseg)
 
-            plot(f[1:], S_Xn[1:], label='welch 2^{}'.format(int(np.log2(nperseg))))
+            plot(f[1:], S_Xn[1:], label='welch 2**{}'.format(int(np.log2(nperseg))))
 
         # plt.loglog(fp, (1-phi**2)/(1+phi**2-2*phi *
         #                            np.cos(2*np.pi*fp)), 'k:', label='true')
         f_pow = fp[1:]**(- 1 / 2) * 2
-        plot(fp[1:], f_pow, label='f^(-1/2)')
+        plot(fp[1:], f_pow, label='f**(-1/2)')
         f_pow = fp[1:]**(- 2) * 1e-3
-        plot(fp[1:], f_pow, label='f^(-2)')
+        plot(fp[1:], f_pow, label='f**(-2)')
         f_pow = fp[1:]**0 * 1e3
-        plot(fp[1:], f_pow, label='f^0')
+        plot(fp[1:], f_pow, label='f**0')
 
         plt.xlabel('f')
         plt.ylabel('PSD')
@@ -221,19 +221,19 @@ def pdf(signal, *args, new_fig=True):
         new_fig (bool, optional): a new figure is created, set to False
             if you want to just call the plot commands. Defaults to True.
     """
-    bins = np.linspace(-5, 5, 30)
-    histogram, bins = np.histogram(signal, bins=bins, density=True)
+    # bins = np.linspace(-5, 5, 30)
+    histogram, bins = np.histogram(signal, bins=10, density=True)
     bin_centers = 0.5*(bins[1:] + bins[:-1])
     # Compute the PDF on the bin centers from scipy distribution object
-    norm_pdf = stats.norm.pdf(bin_centers)
+    # norm_pdf = stats.norm.pdf(bin_centers)
 
     if len(args) == 0:
-        args = ['plot']
+        args = ['semilogy']
     for kind in args:
         if new_fig or len(args) > 1:
             plt.figure()
             plt.title(f'pdf - {kind}')
         plot = getattr(plt, kind)
         plot(bin_centers, histogram, label="Histogram of samples")
-        plot(bin_centers, norm_pdf, label="PDF")
+        # plot(bin_centers, norm_pdf, label="PDF")
         plt.legend()
