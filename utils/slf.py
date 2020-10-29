@@ -100,7 +100,9 @@ class Process(ABC):
                     setattr(self, key, kwargs[key])
                 else:
                     raise TypeError(
-                        f'{key} must be a {type(getattr(self, key))}')
+                        f'"{key}" must be a {type(getattr(self, key))}')
+            else:
+                print(f'"{key}" is not an attribute of {type(self)}')
         self.__update_params()
 
     def get_params(self, full=False):
@@ -276,6 +278,7 @@ class FPPProcess(Process):
                           }
         self.kern = '1exp'
         self.tw = 'exp'
+        self.amp = 'exp'
 
     def create_forcing(self):
         """
@@ -323,9 +326,9 @@ class FPPProcess(Process):
             # TW = np.insert(TW, 0, 0.)
             # ta = np.cumsum(TW[:-1])
             # self.T = ta[-1] + TW[-1]
-            amp, ta, self.T = gsn.amp_ta(1 / tw, self.K, TWdist='unif', TWkappa=.1)
+            amp, ta, self.T = gsn.amp_ta(1 / tw, self.K, TWdist='unif', Adist=self.amp, TWkappa=.1)
         else:
-            amp, ta, self.T = gsn.amp_ta(self.gamma, self.K, TWdist=self.tw)
+            amp, ta, self.T = gsn.amp_ta(self.gamma, self.K, TWdist=self.tw, Adist=self.amp)
 
         return amp, ta
 
@@ -345,10 +348,10 @@ class FPPProcess(Process):
             t, _, response, amp, ta = gsn.make_signal(self.gamma, self.K, self.dt,# kernsize=2**17,
                                                       eps=self.snr, ampta=True, dynamic=True,
                                                       kerntype=self.kern_dict[self.kern], lam=.5,
-                                                      TWdist=self.tw, TWkappa=.0)
+                                                      TWdist=self.tw, Adist=self.amp, TWkappa=.0)
         except Exception:
             amp, ta = self.create_forcing()
-            t, response = gsn.signal_convolve(amp, ta, self.T, self.dt, kernsize=2**17)
+            t, response = gsn.signal_convolve(amp, ta, self.T, self.dt, kernsize=2**17, kerntype=self.kern_dict[self.kern])
 
         ta_index = np.ceil(ta / self.dt).astype(int)
         forcing = np.zeros(t.size)
