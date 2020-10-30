@@ -173,16 +173,21 @@ def fpp_change_gamma(save=False):
     dt = 1e-2
     gamma = [.01, .1, 1., 10.]
     p = slf.FPPProcess()
-    figs = ['var_rate']
-    plt.figure(figs[0])
+    figs = ['cox', 'tw']
     for i, g in enumerate(gamma):
         p.set_params(gamma=g, K=int(N * g * dt), dt=dt, tw=figs[0])
         s = p.create_realisation(fit=False)
-        # p.plot_realisation('plot_real', 'plot_psd', parameter=s)
+        # p.plot_realisation('plot_real', parameter=s)
 
+        plt.figure(figs[0])
         plt.subplot(2, 2, i + 1)
         plt.title(f'$\gamma = {g}$')
-        tools.psd(s[-1], new_fig=False)
+        p.plot_realisation('plot_psd', parameter=s[-1], fs=dt, new_fig=False)
+        plt.figure(figs[1])
+        plt.subplot(2, 2, i + 1)
+        plt.title(f'$\gamma = {g}$')
+        p.plot_realisation('plot_tw', parameter=s, new_fig=False)
+        # tools.psd(s[-1], new_fig=False, fs=dt)
 
     if save:
         for f in figs:

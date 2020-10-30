@@ -12,20 +12,23 @@ For small γ, however, it displays a range of scaling in the power law with slop
     or "amplitudes" in the SLE, and "events" may be compared to variable-rate Poisson processes.
 """
 
-from abc import ABC, abstractmethod, abstractproperty
 import sys
-sys.path.append('/home/een023/uit_scripts')
-import time
+from abc import ABC, abstractmethod, abstractproperty
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import sdepy  # pylint: disable=E0401
 from scipy.signal import fftconvolve
 from sklearn.datasets import make_blobs
-import sdepy  # pylint: disable=E0401
-import tools
-from uit_scripts.shotnoise import gen_shot_noise as gsn  # pylint: disable=E0401
-from uit_scripts.stat_analysis import deconv_methods as dm  # pylint: disable=E0401
+
+sys.path.append('/home/een023/uit_scripts')
 from uit_scripts.misc import runge_kutta_SDE as rksde  # pylint: disable=E0401
+from uit_scripts.shotnoise import \
+    gen_shot_noise as gsn  # pylint: disable=E0401
+from uit_scripts.stat_analysis import \
+    deconv_methods as dm  # pylint: disable=E0401
+
+import tools
 
 
 class Realisation:
@@ -130,7 +133,7 @@ class Process(ABC):
             np.ndarray: see specific classes for number of outputs
         """
 
-    def plot_realisation(self, *plot, parameter=None):  #, all_plots=False, real=False, psd=False):
+    def plot_realisation(self, *plot, parameter=None, **kwargs):  #, all_plots=False, real=False, psd=False):
         """Plot arrays created by a realisation of the process.
         """
         for key in plot:
@@ -139,7 +142,7 @@ class Process(ABC):
             except AttributeError:
                 print(f'No plots made. "{key}" is not an attribute of Process.')
             else:
-                plt_func(parameter=parameter)
+                plt_func(parameter=parameter, **kwargs)
         # if all_plots:
         #     arr = self.create_realisation()
         #     self.plotter(*arr)
@@ -159,7 +162,7 @@ class Process(ABC):
         """Plotter method.
         """
 
-    def plot_all(self, parameter=None):
+    def plot_all(self, parameter=None, **kwargs):
         if parameter is None:
             parameter = self.create_realisation()
             self.plotter(*parameter)
@@ -168,33 +171,33 @@ class Process(ABC):
             self.plotter(*parameter)
             self.plot_psd(parameter[-1])
 
-    def plot_real(self, parameter=None):
+    def plot_real(self, parameter=None, **kwargs):
         if parameter is None:
             parameter = self.create_realisation()
             self.plotter(*parameter)
         else:
             self.plotter(*parameter)
 
-    def plot_psd(self, parameter=None):
+    def plot_psd(self, parameter=None, **kwargs):
         # TODO: probably need to send self.dt into psd calculation (compare with jupyter nb)
         if parameter is None:
             parameter = self.create_realisation(fit=False)
-            tools.psd(parameter[-1])
+            tools.psd(parameter[-1], **kwargs)
         else:
             if isinstance(parameter, np.ndarray):
-                tools.psd(parameter)
+                tools.psd(parameter, **kwargs)
             elif isinstance(parameter, tuple):
-                tools.psd(parameter[-1])
+                tools.psd(parameter[-1], **kwargs)
 
-    def plot_pdf(self, parameter=None):
+    def plot_pdf(self, parameter=None, **kwargs):
         if parameter is None:
             parameter = self.create_realisation(fit=False)
-            tools.pdf(parameter[-1])
+            tools.pdf(parameter[-1], **kwargs)
         else:
             if isinstance(parameter, np.ndarray):
-                tools.pdf(parameter)
+                tools.pdf(parameter, **kwargs)
             elif isinstance(parameter, tuple):
-                tools.pdf(parameter[-1])
+                tools.pdf(parameter[-1], **kwargs)
 
 
 class SDEProcess(Process):
@@ -284,7 +287,7 @@ class FPPProcess(Process):
         """
         docstring
         """
-        kinds = ['cluster', 'var_rate', 'cox']  # 'exp', 'gam',
+        kinds = ['cluster', 'var_rate', 'cox', 'cox_var_rate']  # 'exp', 'gam',
         assert self.tw in kinds, f'The "kind" must be on of {kinds}, not {self.tw}'
         if self.tw == 'cluster':
             x, _ = make_blobs(n_samples=self.K, centers=100, cluster_std=.1, n_features=1, random_state=0)
@@ -303,30 +306,43 @@ class FPPProcess(Process):
             @sdepy.integrate
             def rate_process(t, x, mu=1., k=.1, sigma=1.):
                 return {'dt': k * (mu - x), 'dw': sigma}
+            # k: speed of reversion = .1
+            # mu: long-term average position = 1.
+            # sigma: volatility parameter = 1.
 
             timeline = np.linspace(0., 1., int(1e5))
             t = np.linspace(0., self.T, int(1e5))
             x = rate_process(x0=1.)(timeline)  # pylint: disable=E1102,E1123,E1120
-            x = 2 * self.gamma * (x - np.min(x)) / (np.max(x) - np.min(x)) - 0.
-            # plt.figure()
-            # plt.plot(x)
-            # plt.show()
-            # x[x < 0] = 0
-            # x[x > 1] = 1
+            x = self.gamma * (x - np.min(x)) / (np.max(x) - np.min(x)) + self.gamma
+            x -= np.mean(x)
+            x = abs(x)
             int_thresholds = np.linspace(0, np.sum(x), self.K)
             c_sum = np.cumsum(x)
             ta = tools.find_nearest(c_sum, int_thresholds)
             ta = t[ta]
-            # print(ta)
             amp, _, _ = gsn.amp_ta(self.gamma, self.K)
         elif self.tw == 'cox':
             prob = np.random.default_rng()
-            tw = prob.poisson(lam=1 / self.gamma, size=self.K)
-            # TW = prob.exponential(scale=tw)
-            # TW = np.insert(TW, 0, 0.)
-            # ta = np.cumsum(TW[:-1])
-            # self.T = ta[-1] + TW[-1]
-            amp, ta, self.T = gsn.amp_ta(1 / tw, self.K, TWdist='unif', Adist=self.amp, TWkappa=.1)
+            tw = prob.gamma(shape=1., scale=1 / self.gamma, size=self.K)
+            # tw = prob.poisson(lam=1 / self.gamma, size=self.K)
+            amp, ta, self.T = gsn.amp_ta(1 / tw, self.K, TWdist='exp', Adist=self.amp, TWkappa=.1)
+        elif self.tw == 'cox_var_rate':
+            # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian motions. 2018. hal-01919754
+            # https://hal.archives-ouvertes.fr/hal-01919754/document
+            # and https://sdepy.readthedocs.io/en/v1.1.1/intro.html#id2
+            # This uses a Wiener process as dW(t)
+            @sdepy.integrate
+            def rate_process(t, x, mu=2., k=.1, sigma=1.):
+                return {'dt': k * (mu - x), 'dw': sigma}
+            # k: speed of reversion = .1
+            # mu: long-term average position = 1.
+            # sigma: volatility parameter = 1.
+
+            timeline = np.linspace(0., 1., self.K)
+            t = np.linspace(0., self.T, self.K)
+            x = rate_process(x0=2.)(timeline)  # pylint: disable=E1102,E1123,E1120
+            g = x / 2 * self.gamma
+            amp, ta, self.T = gsn.amp_ta(g, self.K, TWdist='exp', Adist=self.amp, TWkappa=.1)
         else:
             amp, ta, self.T = gsn.amp_ta(self.gamma, self.K, TWdist=self.tw, Adist=self.amp)
 
@@ -342,8 +358,9 @@ class FPPProcess(Process):
         return pulse, pulse_fit, response_fit, error
 
     def create_realisation(self, fit=True):
-        # Beware that seeds may yield strange results! E.g. 623 is too periodic.
-        # prev. good seeds: (20, 31), (623, 623)
+        # Beware that seeds may yield strange results!
+        # Equal seeds give correlated amplitude and waiting times.
+        # prev. good seeds: (20, 31)
         try:
             t, _, response, amp, ta = gsn.make_signal(self.gamma, self.K, self.dt,# kernsize=2**17,
                                                       eps=self.snr, ampta=True, dynamic=True,
@@ -362,6 +379,21 @@ class FPPProcess(Process):
             fitted = self.fit_pulse(t, forcing, response)
             return t, forcing, fitted[0], fitted[1], fitted[2], fitted[3], response
         return t, forcing, response
+
+    def plot_tw(self, parameter=None, new_fig=True):
+        if parameter is None:
+            parameter = self.create_realisation(fit=False)
+        else:
+            if isinstance(parameter, np.ndarray):
+                raise TypeError('"plot_tw" only works if both the time and forcing arrays are sent in')
+        t = parameter[0]
+        f = parameter[1]
+        ta = t[f > 0]
+        trw = np.diff(ta)
+        tw = np.sort(trw)[::-1]
+        if new_fig:
+            plt.figure()
+        plt.semilogx(tw, label='waiting times, high to low')
 
     @staticmethod
     def plotter(*args):

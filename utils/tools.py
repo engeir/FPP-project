@@ -166,7 +166,7 @@ def est_corr(signal):
     plt.legend()
 
 
-def psd(signal, *args, new_fig=True):
+def psd(signal, *args, fs=1e-2, new_fig=True):
     """Estimate the power spectral density of `signal`.
 
     Args:
@@ -179,8 +179,7 @@ def psd(signal, *args, new_fig=True):
     """
     Xn = (signal - signal.mean()) / signal.std()
     # Periodogram - simple calculation
-    fp, P_Xn = ssi.periodogram(Xn, fs=1.)
-
+    fp, P_Xn = ssi.periodogram(Xn, fs=fs)
     if len(args) == 0:
         args = ['loglog']
     for kind in args:
@@ -191,21 +190,25 @@ def psd(signal, *args, new_fig=True):
         plot(fp[1:], P_Xn[1:], label='periodogram')
 
         # Using the Welch method - window size (nperseg) is most important for us.
-        for nperseg in 2**np.array([13, 10, 7]):
-            f, S_Xn = ssi.welch(Xn, fs=1., nperseg=nperseg)
+        for nperseg in 2**np.array([13, 10]):
+            f, S_Xn = ssi.welch(Xn, fs=fs, nperseg=nperseg)
 
-            plot(f[1:], S_Xn[1:], label='welch 2**{}'.format(int(np.log2(nperseg))))
+            plot(f[1:], S_Xn[1:], label='welch $2^{' + str(int(np.log2(nperseg))) + '}$')
 
         # plt.loglog(fp, (1-phi**2)/(1+phi**2-2*phi *
         #                            np.cos(2*np.pi*fp)), 'k:', label='true')
-        f_pow = fp[1:]**(- 1 / 2) * 2
-        plot(fp[1:], f_pow, label='f**(-1/2)')
-        f_pow = fp[1:]**(- 2) * 1e-3
-        plot(fp[1:], f_pow, label='f**(-2)')
-        f_pow = fp[1:]**0 * 1e3
-        plot(fp[1:], f_pow, label='f**0')
+        w = 2 * np.pi * fp[1:]
+        t_d = (1 / fs)**2
+        lor = 2 * t_d / (1 + (t_d * w)**2)
+        plot(fp[1:], lor, label='Lorentz spectrum')
+        # f_pow = fp[1:]**(- 1 / 2) * 2
+        # plot(fp[1:], f_pow, label='$f^{-1/2}$')
+        # f_pow = fp[1:]**(- 2) * 1e-3
+        # plot(fp[1:], f_pow, label='$f^{-2}$')
+        # f_pow = fp[1:]**0 * 1e3
+        # plot(fp[1:], f_pow, label='$f^0$')
 
-        plt.xlabel('f')
+        plt.xlabel('$f$')
         plt.ylabel('PSD')
         plt.legend()
 
@@ -236,4 +239,6 @@ def pdf(signal, *args, new_fig=True):
         plot = getattr(plt, kind)
         plot(bin_centers, histogram, label="Histogram of samples")
         # plot(bin_centers, norm_pdf, label="PDF")
+        plt.xlabel('$f$')
+        plt.ylabel('PDF')
         plt.legend()
