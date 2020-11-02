@@ -173,7 +173,7 @@ class Process(ABC):
 
     def plot_real(self, parameter=None, **kwargs):
         if parameter is None:
-            parameter = self.create_realisation()
+            parameter = self.create_realisation(**kwargs)
             self.plotter(*parameter)
         else:
             self.plotter(*parameter)

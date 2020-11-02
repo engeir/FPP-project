@@ -22,6 +22,25 @@ pu.figure_setup()
 save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
 
 
+def fpp_example(save=False):
+    """Example of FPP process, exponential everything.
+    """
+    p = slf.FPPProcess()
+    N = int(1e5)
+    dt = 1e-2
+    gamma = .1
+    figs = 'fpp_example'
+    p.set_params(gamma=gamma, K=int(N * gamma * dt), dt=dt)
+    p.plot_realisation('plot_real', fit=False)
+
+    if save:
+        plt.tight_layout()
+        plt.savefig(f'{save_path}{figs}.pdf', bbox_inches='tight', format='pdf', dpi=600)
+        plt.savefig(f'{save_path}{figs}.pgf', bbox_inches='tight')
+    else:
+        plt.show()
+
+
 def power_law_pulse(save=False):
     """Power law kernel function.
 
@@ -43,12 +62,14 @@ def power_law_pulse(save=False):
         plt.figure(figs[0])
         plt.subplot(2, 2, i + 1)
         plt.title(f'$\gamma = {g}$')
-        tools.psd(s[-1], new_fig=False)
+        p.plot_realisation('plot_psd', parameter=s[-1], fs=dt, new_fig=False)
+        # tools.psd(s[-1], new_fig=False)
 
         plt.figure(figs[1])
         plt.subplot(2, 2, i + 1)
         plt.title(f'$\gamma = {g}$')
-        tools.pdf(s[-1], new_fig=False)
+        p.plot_realisation('plot_pdf', parameter=s[-1], new_fig=False)
+        # tools.pdf(s[-1], new_fig=False)
 
     if save:
         for f in figs:
@@ -81,7 +102,8 @@ def waiting_times(save=False):
             plt.figure(figs[j])
             plt.subplot(2, 2, i + 1)
             plt.title('$\\tau_{\mathrm{w}}=\mathrm{' + tw.replace('_', '\_') + '}$')
-            tools.psd(s[-1], new_fig=False)
+            p.plot_realisation('plot_psd', parameter=s[-1], fs=dt, new_fig=False)
+            # tools.psd(s[-1], new_fig=False)
 
             # plt.figure('pdf')
             # plt.subplot(3, 2, i + 1)
@@ -120,12 +142,14 @@ def amplitude_dist(save=False):
         plt.figure(figs[0])
         plt.subplot(3, 2, i + 1)
         plt.title(f'Adist = {a}')
-        tools.psd(s[-1], new_fig=False)
+        p.plot_realisation('plot_psd', parameter=s[-1], fs=dt, new_fig=False)
+        # tools.psd(s[-1], new_fig=False)
 
         plt.figure(figs[1])
         plt.subplot(3, 2, i + 1)
         plt.title(f'Adist = {a}')
-        tools.pdf(s[-1], new_fig=False)
+        p.plot_realisation('plot_pdf', parameter=s[-1], new_fig=False)
+        # tools.pdf(s[-1], new_fig=False)
 
     if save:
         for f in figs:
@@ -235,9 +259,10 @@ def sde_change_gamma(save=False):
 
 
 if __name__ == '__main__':
-    # power_law_pulse()
-    # waiting_times()
-    # amplitude_dist()
+    # fpp_example()
+    power_law_pulse(save=True)
+    waiting_times(save=True)
+    amplitude_dist(save=True)
     # compare_variations()
-    fpp_change_gamma()
-    # sde_change_gamma()
+    fpp_change_gamma(save=True)
+    sde_change_gamma(save=True)
