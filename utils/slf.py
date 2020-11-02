@@ -323,7 +323,8 @@ class FPPProcess(Process):
             amp, _, _ = gsn.amp_ta(self.gamma, self.K)
         elif self.tw == 'cox':
             prob = np.random.default_rng()
-            tw = prob.gamma(shape=1., scale=1 / self.gamma, size=self.K)
+            # tw = prob.gamma(shape=1., scale=1 / self.gamma, size=self.K)
+            tw = prob.exponential(scale=1 / self.gamma, size=self.K)
             # tw = prob.poisson(lam=1 / self.gamma, size=self.K)
             amp, ta, self.T = gsn.amp_ta(1 / tw, self.K, TWdist='exp', Adist=self.amp, TWkappa=.1)
         elif self.tw == 'cox_var_rate':

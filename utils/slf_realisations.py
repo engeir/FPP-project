@@ -22,14 +22,15 @@ pu.figure_setup()
 save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
 
 
-def fpp_example(save=False):
+def fpp_sde_example(save=False):
     """Example of FPP process, exponential everything.
     """
     p = slf.FPPProcess()
+    psde = slf.SDEProcess()
     N = int(1e5)
     dt = 1e-2
     gamma = .1
-    figs = 'fpp_example'
+    figs = ['fpp_example', 'sde_example']
     p.set_params(gamma=gamma, K=int(N * gamma * dt), dt=dt)
     p.plot_realisation('plot_real', fit=False)
 
@@ -197,9 +198,10 @@ def fpp_change_gamma(save=False):
     dt = 1e-2
     gamma = [.01, .1, 1., 10.]
     p = slf.FPPProcess()
-    figs = ['cox', 'tw']
+    tw = 'cox'
+    figs = ['psd', 'tw']
     for i, g in enumerate(gamma):
-        p.set_params(gamma=g, K=int(N * g * dt), dt=dt, tw=figs[0])
+        p.set_params(gamma=g, K=int(N * g * dt), dt=dt, tw=tw)
         s = p.create_realisation(fit=False)
         # p.plot_realisation('plot_real', parameter=s)
 
@@ -217,9 +219,9 @@ def fpp_change_gamma(save=False):
         for f in figs:
             plt.figure(f)
             plt.tight_layout()
-            plt.savefig(f'{save_path}tw_{f}.pdf',
+            plt.savefig(f'{save_path}{tw}_{f}.pdf',
                         bbox_inches='tight', format='pdf', dpi=600)
-            plt.savefig(f'{save_path}tw_{f}.pgf', bbox_inches='tight')
+            plt.savefig(f'{save_path}{tw}_{f}.pgf', bbox_inches='tight')
     else:
         plt.show()
 
@@ -241,9 +243,9 @@ def sde_change_gamma(save=False):
         plt.subplot(2, 2, i + 1)
         p.set_params(gamma=g, K=int(N * g * dt), dt=dt)
         s = p.create_realisation(fit=False)
-        # print(s)
         plt.title(f'$\gamma = {g}$')
-        tools.psd(s[-1], new_fig=False)
+        p.plot_realisation('plot_psd', parameter=s[-1], fs=dt, new_fig=False)
+        # tools.psd(s[-1], new_fig=False)
         # mask = int(len(s[-1]) * .1)
         # plt.semilogy(abs(s[-1]))
 
@@ -259,10 +261,10 @@ def sde_change_gamma(save=False):
 
 
 if __name__ == '__main__':
-    # fpp_example()
-    power_law_pulse(save=True)
-    waiting_times(save=True)
-    amplitude_dist(save=True)
+    # fpp_sde_example()
+    # power_law_pulse()
+    # waiting_times()
+    # amplitude_dist()
     # compare_variations()
-    fpp_change_gamma(save=True)
-    sde_change_gamma(save=True)
+    fpp_change_gamma()
+    # sde_change_gamma()
