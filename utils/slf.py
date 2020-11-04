@@ -158,7 +158,7 @@ class Process(ABC):
 
     @staticmethod
     @abstractmethod
-    def plotter(*args):
+    def plotter(*args, new_fig=True):
         """Plotter method.
         """
 
@@ -240,12 +240,13 @@ class SDEProcess(Process):
         return t, x
 
     @staticmethod
-    def plotter(*args):
-        assert len(args) == 2 or len(args) == 7
-        plt.figure(figsize=(9, 6))
+    def plotter(*args, new_fig=True):
+        assert len(args) == 2 or len(args) == 7, f'length of args is "{len(args)}"'
+        if new_fig == True:
+            plt.figure(figsize=(9, 6))
         if len(args) == 2:
             t, x = args
-            plt.plot(t, x, 'k', label='Response (SLF)', linewidth=2)
+            plt.plot(t, x, 'k', label='Response', linewidth=2)
             plt.legend()
         else:
             t, ta, amp, pulse, forcing, error, x = args
@@ -397,9 +398,10 @@ class FPPProcess(Process):
         plt.semilogx(tw, label='waiting times, high to low')
 
     @staticmethod
-    def plotter(*args):
-        assert len(args) == 7 or len(args) == 3
-        plt.figure(figsize=(9, 6))
+    def plotter(*args, new_fig=True):
+        assert len(args) == 7 or len(args) == 3, f'length of args is "{len(args)}"'
+        if new_fig == True:
+            plt.figure(figsize=(9, 6))
         if len(args) == 7:
             t, forcing, pulse, pulse_fit, response_fit, error, response = args
             plt.subplot(4, 1, 1)

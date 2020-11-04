@@ -26,19 +26,19 @@ the various elements of the figures.
 def label_size():
     """Size of axis labels
     """
-    return 8
+    return 15
 
 
 def font_size():
     """Size of all texts shown in plots
     """
-    return 8
+    return 15
 
 
 def ticks_size():
     """Size of axes' ticks
     """
-    return 8
+    return 15
 
 
 def axis_lw():

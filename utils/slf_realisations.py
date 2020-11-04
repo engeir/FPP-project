@@ -1,5 +1,6 @@
 import sys
 
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -22,22 +23,70 @@ pu.figure_setup()
 save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
 
 
-def fpp_sde_example(save=False):
+def fpp_example(save=False):
     """Example of FPP process, exponential everything.
     """
     p = slf.FPPProcess()
     psde = slf.SDEProcess()
-    N = int(1e5)
+    N = int(1e4)
     dt = 1e-2
     gamma = .1
-    figs = ['fpp_example', 'sde_example']
-    p.set_params(gamma=gamma, K=int(N * gamma * dt), dt=dt)
-    p.plot_realisation('plot_real', fit=False)
+    snr = 0.
+    figs = 'fpp_example'
+    p.set_params(gamma=gamma, K=int(N * gamma * dt), dt=dt, snr=snr)
+    s = p.create_realisation(fit=False)
+    pulse = p.fit_pulse(s[0], s[1], s[2])
+    p.plot_realisation('plot_real', parameter=s, fit=False)
+    plt.subplot(2, 1, 1)
+    plt.plot(s[0], pulse[0], 'r', label='Pulse')
+    plt.legend()
 
     if save:
         plt.tight_layout()
         plt.savefig(f'{save_path}{figs}.pdf', bbox_inches='tight', format='pdf', dpi=600)
         plt.savefig(f'{save_path}{figs}.pgf', bbox_inches='tight')
+    else:
+        plt.show()
+
+
+def fpp_sde_realisations(save=False):
+    """Example of FPP and SDE realisations with varying gamma.
+
+    Args:
+        save (bool, optional): save if True, show if False. Defaults to False.
+    """
+    pf = slf.FPPProcess()
+    ps = slf.SDEProcess()
+    N = int(1e4)
+    dt = 1e-2
+    snr = .01
+    gamma = [.1, 1., 10.]
+    figg = ['fpp_gamma', 'sde_gamma']
+    figs = []
+    for g in gamma:
+        for f in figg:
+            figs.append(f'{f}_{g}')
+    for i, g in enumerate(gamma):
+        pf.set_params(gamma=g, K=int(N * g * dt), dt=dt, snr=snr)
+        ps.set_params(gamma=g, K=int(N * g * dt), dt=dt)
+
+        s1, _, s2 = pf.create_realisation(fit=False)
+        if g == 10.:
+            s2[:100] = np.nan
+        s = (s1, s2)
+        plt.figure(figs[2 * i], figsize=(5, 3.5))
+        ps.plotter(*s, new_fig=False)
+
+        s = ps.create_realisation(fit=False)
+        plt.figure(figs[2 * i + 1], figsize=(5, 3.5))
+        ps.plotter(*s, new_fig=False)
+
+    if save:
+        for f in figs:
+            plt.figure(f)
+            plt.tight_layout()
+            plt.savefig(f'{save_path}{f}.pdf', bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}{f}.pgf', bbox_inches='tight')
     else:
         plt.show()
 
@@ -261,10 +310,11 @@ def sde_change_gamma(save=False):
 
 
 if __name__ == '__main__':
-    # fpp_sde_example()
+    # fpp_example()
+    fpp_sde_realisations()
     # power_law_pulse()
     # waiting_times()
     # amplitude_dist()
     # compare_variations()
-    fpp_change_gamma()
+    # fpp_change_gamma()
     # sde_change_gamma()
