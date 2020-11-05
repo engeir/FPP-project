@@ -8,9 +8,12 @@ import slf
 import tools
 import plot_utils as pu
 
-sys.path.append('../uit_scripts')
-plt.style.use('ggplot')
-pu.figure_setup()
+sys.path.append('/home/een023/uit_scripts')
+from uit_scripts.plotting import figure_defs as fd
+fd.set_rcparams_article_thickline(plt.rcParams)
+# plt.style.use('ggplot')
+# pu.figure_setup()
+
 # plt.rcParams['axes.grid'] = True
 # # Customize matplotlib
 # matplotlib.rcParams.update({
@@ -109,13 +112,13 @@ def power_law_pulse(save=False):
         p.set_params(gamma=g, K=int(N * g * dt), dt=dt, kern=kern, tw='exp')
         s = p.create_realisation(fit=False)
 
-        plt.figure(figs[0])
+        plt.figure(figs[0], figsize=(7, 5))
         plt.subplot(2, 2, i + 1)
         plt.title(f'$\gamma = {g}$')
         p.plot_realisation('plot_psd', parameter=s[-1], fs=dt, new_fig=False)
         # tools.psd(s[-1], new_fig=False)
 
-        plt.figure(figs[1])
+        plt.figure(figs[1], figsize=(7, 5))
         plt.subplot(2, 2, i + 1)
         plt.title(f'$\gamma = {g}$')
         p.plot_realisation('plot_pdf', parameter=s[-1], new_fig=False)
@@ -142,7 +145,7 @@ def waiting_times(save=False):
     N = int(1e5)
     dt = 1e-2
     gamma = [.1, 1., 10.]
-    TW = ['exp', 'var_rate', 'cluster', 'cox']  # , 'gam', 'deg', 'unif'
+    TW = ['exp', 'var_rate', 'tick', 'cox']  # , 'gam', 'deg', 'unif'
     figs = [f'gamma={g}' for g in gamma]
     for j, g in enumerate(gamma):
         for i, tw in enumerate(TW):
@@ -286,13 +289,14 @@ def sde_change_gamma(save=False):
     dt = 1e-2
     gamma = [.01, .1, 1., 10.]
     p = slf.SDEProcess()
-    figs = ['gamma']
-    plt.figure(figs[0])
+    figs = [str(g) for g in gamma]
+    # plt.figure(figs[0])
     for i, g in enumerate(gamma):
-        plt.subplot(2, 2, i + 1)
+        plt.figure(figs[i])
+        # plt.subplot(2, 2, i + 1)
         p.set_params(gamma=g, K=int(N * g * dt), dt=dt)
         s = p.create_realisation(fit=False)
-        plt.title(f'$\gamma = {g}$')
+        # plt.title(f'$\gamma = {g}$')
         p.plot_realisation('plot_psd', parameter=s[-1], fs=dt, new_fig=False)
         # tools.psd(s[-1], new_fig=False)
         # mask = int(len(s[-1]) * .1)

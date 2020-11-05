@@ -20,6 +20,9 @@ import numpy as np
 import sdepy  # pylint: disable=E0401
 from scipy.signal import fftconvolve
 from sklearn.datasets import make_blobs
+import tick.hawkes as th
+import tick.base as tb
+import tick.plot as tp
 
 sys.path.append('/home/een023/uit_scripts')
 from uit_scripts.misc import runge_kutta_SDE as rksde  # pylint: disable=E0401
@@ -246,21 +249,26 @@ class SDEProcess(Process):
             plt.figure(figsize=(9, 6))
         if len(args) == 2:
             t, x = args
-            plt.plot(t, x, 'k', label='Response', linewidth=2)
+            plt.xlabel('$t$')
+            plt.plot(t, x, 'k', label='Response')
             plt.legend()
         else:
             t, ta, amp, pulse, forcing, error, x = args
             plt.subplot(4, 1, 1)
+            plt.xlabel('$t$')
             plt.plot(t, forcing, '-ok', label='Forcing (Estimated)')
             plt.scatter(ta, amp, c='r', label='Amplitudes (Estimated)')
             plt.legend()
             plt.subplot(4, 1, 2)
+            plt.xlabel('$t$')
             plt.plot(t, pulse, 'k', label='Pulse (Synthetic)', linewidth=2)
             plt.legend()
             plt.subplot(4, 1, 3)
+            plt.xlabel('$t$')
             plt.plot(t, x, 'k', label='Response (SLF)', linewidth=2)
             plt.legend()
             plt.subplot(4, 1, 4)
+            plt.xlabel('$t$')
             plt.semilogy(error, 'b', label='Error')
             plt.legend()
 
@@ -288,7 +296,7 @@ class FPPProcess(Process):
         """
         docstring
         """
-        kinds = ['cluster', 'var_rate', 'cox', 'cox_var_rate']  # 'exp', 'gam',
+        kinds = ['cluster', 'var_rate', 'cox', 'cox_var_rate', 'tick']
         assert self.tw in kinds, f'The "kind" must be on of {kinds}, not {self.tw}'
         if self.tw == 'cluster':
             x, _ = make_blobs(n_samples=self.K, centers=100, cluster_std=.1, n_features=1, random_state=0)
@@ -345,6 +353,43 @@ class FPPProcess(Process):
             x = rate_process(x0=2.)(timeline)  # pylint: disable=E1102,E1123,E1120
             g = x / 2 * self.gamma
             amp, ta, self.T = gsn.amp_ta(g, self.K, TWdist='exp', Adist=self.amp, TWkappa=.1)
+        elif self.tw == 'tick':
+            # https://arxiv.org/pdf/1707.03003.pdf
+            @sdepy.integrate
+            def rate_process(t, x, mu=1., k=.1, sigma=1.):
+                return {'dt': k * (mu - x), 'dw': sigma}
+            # k: speed of reversion = .1
+            # mu: long-term average position = 1.
+            # sigma: volatility parameter = 1.
+
+            timeline = np.linspace(0., 1., self.K)
+            t = np.linspace(0., self.T, self.K)
+            x = rate_process(x0=1.)(timeline)  # pylint: disable=E1102,E1123,E1120
+            x = x.reshape((-1,))
+            x *= self.gamma / x.mean()
+            # === PLOT RATE ===
+            # plt.figure()
+            # plt.plot(t, x)
+            # === CREATE Inhomogeneous Poisson process ===
+            tf = tb.TimeFunction((t, x), dt=self.dt)
+            ipp = th.SimuInhomogeneousPoisson([tf], end_time=self.T, verbose=False)
+            ipp.track_intensity()  # Accepts float > 0 to set time step of reproduced rate process
+            ipp.threshold_negative_intensity()
+            ipp.simulate()
+            ta = ipp.timestamps[0]
+            self.K = len(ta)
+            # === PLOT FULL INTENSITY PROCESS (need float in track_intensity) ===
+            # xx, yy = ipp.intensity_tracked_times, ipp.tracked_intensity
+            # yy = yy[0]
+            # y = yy[tools.find_nearest(xx, ta)]
+            # === PLOT RETRIEVED DATA ===
+            # plt.figure()
+            # # plt.plot(xx, yy)
+            # plt.scatter(ta, np.arange(len(ta)))
+            amp, _, _ = gsn.amp_ta(self.gamma, self.K)
+            # print(len(amp), len(ta), ta[-1], self.T, self.K)
+            # tp.plot_point_process(ipp)
+            # sys.exit()
         else:
             amp, ta, self.T = gsn.amp_ta(self.gamma, self.K, TWdist=self.tw, Adist=self.amp)
 
@@ -401,31 +446,38 @@ class FPPProcess(Process):
     def plotter(*args, new_fig=True):
         assert len(args) == 7 or len(args) == 3, f'length of args is "{len(args)}"'
         if new_fig == True:
-            plt.figure(figsize=(9, 6))
+            plt.figure(figsize=(6, 4))
         if len(args) == 7:
             t, forcing, pulse, pulse_fit, response_fit, error, response = args
             plt.subplot(4, 1, 1)
+            plt.xlabel('$t$')
             plt.plot(t, forcing, '-ok', label='Forcing')
             plt.legend()
             plt.subplot(4, 1, 2)
+            plt.xlabel('$t$')
             plt.plot(t, pulse, 'k', label='Pulse', linewidth=2)
             plt.plot(t, pulse_fit, 'r', label='Pulse fit')
             plt.legend()
             plt.subplot(4, 1, 3)
+            plt.xlabel('$t$')
             plt.plot(t, response, 'k', label='Response', linewidth=2)
             plt.plot(t, response_fit, 'r', label='Response fit')
             plt.legend()
             plt.subplot(4, 1, 4)
+            plt.xlabel('$t$')
             plt.semilogy(error, 'b', label='Error')
             plt.legend()
         else:
             t, forcing, response = args
             plt.subplot(2, 1, 1)
+            plt.xlabel('$t$')
             plt.plot(t, forcing, '-ok', label='Forcing')
             plt.legend()
             plt.subplot(2, 1, 2)
-            plt.plot(t, response, 'k', label='Response', linewidth=2)
+            plt.xlabel('$t$')
+            plt.plot(t, response, 'k', label='Response')
             plt.legend()
+        plt.xlabel('$t$')
 
 
 if __name__ == '__main__':
@@ -446,18 +498,24 @@ if __name__ == '__main__':
     # # r_n = Realisation()
     # r_c = Realisation()
     # r_fr = Realisation()
-    r_sde = Realisation(process='SDE')
+    # r_sde = Realisation(process='SDE')
     # # r_n.set_params(gamma=1., T=10000., kern='1exp', snr=.0, tw='ray')
     # r_c.set_params(gamma=.1, kern='1exp', snr=.0, tw='cluster')
     # r_fr.set_params(gamma=.1, kern='1exp', snr=.0, tw='var_rate')
-    r_sde.set_params(gamma=.1, K=1000, dt=.1)
+    # r_sde.set_params(gamma=.1, K=1000, dt=.1)
     # # r_n.plotter()
     # r_c.plotter()
     # r_fr.plotter()
-    r_sde.plotter()
+    # r_sde.plotter()
     # # r_n.plot_psd()
     # r_c.plot_psd()
     # r_fr.plot_psd()
-    r_sde.plot_psd()
+    # r_sde.plot_psd()
     # tools.timestamp()
-    plt.show()
+    # plt.show()
+    N = int(1e5)
+    dt = 1e-2
+    gamma = 1.
+    p = FPPProcess()
+    p.set_params(tw='tick', gamma=gamma, K=int(N * gamma * dt), dt=dt)
+    p.create_realisation()
