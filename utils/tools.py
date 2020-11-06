@@ -180,6 +180,9 @@ def psd(signal, *args, fs=1e-2, new_fig=True):
         new_fig (bool, optional): a new figure is created, set to False
             if you want to just call the plot commands. Defaults to True.
     """
+    c = ['b', 'r', 'g', 'magenta', 'yellow', 'royalblue',
+         'chartreuse', 'firebrick', 'darkorange']
+    c = itertools.cycle(c)
     Xn = (signal - signal.mean()) / signal.std()
     # Periodogram - simple calculation
     fp, P_Xn = ssi.periodogram(Xn, fs=fs)
@@ -190,20 +193,24 @@ def psd(signal, *args, fs=1e-2, new_fig=True):
             plt.figure()
             plt.title(f'psd - {kind}')
         plot = getattr(plt, kind)
-        plot(fp[1:], P_Xn[1:], label='periodogram')
+        al = .5
+        plot(fp[1:], P_Xn[1:], f'{next(c)}', label='periodogram', alpha=al)
 
         # Using the Welch method - window size (nperseg) is most important for us.
         for nperseg in 2**np.array([13, 10]):
+            if al < 1.:
+                al += .2
             f, S_Xn = ssi.welch(Xn, fs=fs, nperseg=nperseg)
 
-            plot(f[1:], S_Xn[1:], label='welch $2^{' + str(int(np.log2(nperseg))) + '}$')
+            plot(f[1:], S_Xn[1:], f'{next(c)}', label='welch $2^{' +
+                 str(int(np.log2(nperseg))) + '}$', alpha=al)
 
         # plt.loglog(fp, (1-phi**2)/(1+phi**2-2*phi *
         #                            np.cos(2*np.pi*fp)), 'k:', label='true')
         w = 2 * np.pi * fp[1:]
         t_d = (1 / fs)**2
         lor = 2 * t_d / (1 + (t_d * w)**2)
-        plot(fp[1:], lor, label='Lorentz spectrum')
+        plot(fp[1:], lor, 'k--', label='Lorentz spectrum', alpha=.8)
         # f_pow = fp[1:]**(- 1 / 2) * 2
         # plot(fp[1:], f_pow, label='$f^{-1/2}$')
         # f_pow = fp[1:]**(- 2) * 1e-3
@@ -213,7 +220,7 @@ def psd(signal, *args, fs=1e-2, new_fig=True):
 
         plt.xlabel('$f$')
         plt.ylabel('PSD')
-        plt.legend()
+        # plt.legend()
 
 
 def pdf(signal, *args, new_fig=True):
@@ -247,7 +254,94 @@ def pdf(signal, *args, new_fig=True):
         plt.legend()
 
 
+def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=None):
+    """Plot data in a ridge plot with fixed width and fixed height per ridge.
+
+    Args:
+        data (list): a list of n tuples/lists of length 2: (x, y)-pairs
+        xlabel (bool or str, optional): x-label placed at the bottom, nothing if False. Defaults to False.
+        ylabel (bool or str, optional): y-label placed at all ridge y-axis, nothing if False. Defaults to False.
+        labels (bool or list, optional): list of str with the labels of the ridges; must be the same length as `data`. Defaults to False.
+        figname (None or str, optional): first arg in plt.figure(); useful for tracking figure-object. Defaults to None.
+    """
+    fsize = (4, 1.5 * len(data))
+    gs = grid_spec.GridSpec(len(data), 1)
+    if figname is not None:
+        fig = plt.figure(figname, figsize=fsize)
+    else:
+        fig = plt.figure(figsize=fsize)
+    ax_objs = []
+    l2 = []
+    c = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    clr = np.linspace(1, 0, 4)
+    c = itertools.cycle(c)
+    clr = itertools.cycle(clr)
+    for i, s in enumerate(data):
+        col = next(c)
+        col1 = np.copy(col)
+        # === Calculate PSD
+        signal = s[1]
+        Xn = (signal - signal.mean()) / signal.std()
+        ax_objs.append(fig.add_subplot(gs[i:i + 1, 0:]))
+        # === Do actual plotting
+        fp, P_Xn = ssi.periodogram(Xn, fs=fs)
+        col[i] = next(clr)
+        l = ax_objs[-1].loglog(fp[1:], P_Xn[1:], color=(col[0], col[1], col[2]), label='periodogram', alpha=.5)[0]
+        l2.append(l)
+        for nperseg in 2**np.array([13, 10]):
+            f, S_Xn = ssi.welch(Xn, fs=fs, nperseg=nperseg)
+            col[i] = next(clr)
+            ax_objs[-1].loglog(f[1:], S_Xn[1:], color=(col[0], col[1], col[2]), label='welch $2^{' + str(int(np.log2(nperseg))) + '}$', alpha=.6)
+        w = 2 * np.pi * fp[1:]
+        t_d = (1 / fs)**2
+        lor = 2 * t_d / (1 + (t_d * w)**2)
+        col[i] = next(clr)
+        ax_objs[-1].loglog(fp[1:], lor, '--', color=(col[0], col[1], col[2]),
+                           label='Lorentz spectrum', alpha=.8)
+        # === Do actual plotting
+        if i == 0:
+            spines = ["bottom"]
+        elif i == len(data) - 1:
+            spines = ["top"]
+        else:
+            spines = ["top", "bottom"]
+        ax_objs[-1].patch.set_alpha(0)
+        for sp in spines:
+            ax_objs[-1].spines[sp].set_visible(False)
+            ax_objs[-1].spines['left'].set_color((col1[0], col1[1], col1[2]))
+            ax_objs[-1].spines['right'].set_color((col1[0], col1[1], col1[2]))
+            ax_objs[-1].yaxis.label.set_color((col1[0], col1[1], col1[2]))
+            ax_objs[-1].tick_params(axis='y', which='both', colors=(col1[0], col1[1], col1[2]))
+        if ylabel:
+            plt.ylabel(ylabel)
+        if i == len(data) - 1:
+            if xlabel:
+                plt.xlabel(xlabel)
+            plt.tick_params(axis='x', which='both', top=False)
+        else:
+            plt.tick_params(axis='x', which='both', bottom=False,
+                            top=False, labelbottom=False)
+
+    ax_objs[-1].legend(prop={'size': 6})
+    if labels:
+        if len(labels) == len(data):
+            fig.legend(l2, labels, loc='lower center',  bbox_to_anchor=(.5, 1.),
+                    bbox_transform=ax_objs[0].transAxes, ncol=len(data))
+        else:
+            print('Length of labels and data was not equal.')
+    gs.update(hspace=0.)
+
+
 def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None):
+    """Plot data in a ridge plot with fixed width and fixed height per ridge.
+
+    Args:
+        data (list): a list of n tuples/lists of length 2: (x, y)-pairs
+        xlabel (bool or str, optional): x-label placed at the bottom, nothing if False. Defaults to False.
+        ylabel (bool or str, optional): y-label placed at all ridge y-axis, nothing if False. Defaults to False.
+        labels (bool or list, optional): list of str with the labels of the ridges; must be the same length as `data`. Defaults to False.
+        figname (None or str, optional): first arg in plt.figure(); useful for tracking figure-object. Defaults to None.
+    """
     fsize = (4, len(data))
     gs = grid_spec.GridSpec(len(data), 1)
     if figname is not None:
@@ -256,7 +350,7 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None):
         fig = plt.figure(figsize=fsize)
     ax_objs = []
     l2 = []
-    c = ['g', 'b', 'r', 'magenta', 'yellow', 'royalblue',
+    c = ['r', 'g', 'b', 'magenta', 'yellow', 'royalblue',
          'chartreuse', 'firebrick', 'darkorange']
     c = itertools.cycle(c)
     for i, s in enumerate(data):
@@ -270,8 +364,6 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None):
             spines = ["top", "bottom"]
         l = ax_objs[-1].plot(s[0], s[1], col)[0]
         l2.append(l)
-        if i == 0:
-            legend_pos = (np.mean(s[0]), np.max(s[1]))
         ax_objs[-1].patch.set_alpha(0)
         for sp in spines:
             ax_objs[-1].spines[sp].set_visible(False)
@@ -291,8 +383,8 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None):
 
     if labels:
         if len(labels) == len(data):
-            fig.legend(l2, labels, loc='lower center',  bbox_to_anchor=legend_pos,
-                    bbox_transform=ax_objs[0].transData, ncol=len(data))
+            fig.legend(l2, labels, loc='lower center',  bbox_to_anchor=(.5, 1.),
+                    bbox_transform=ax_objs[0].transAxes, ncol=len(data))
         else:
             print('Length of labels and data was not equal.')
     gs.update(hspace=0.)

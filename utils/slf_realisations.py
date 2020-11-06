@@ -1,7 +1,6 @@
 import sys
 
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as grid_spec
 
@@ -12,6 +11,7 @@ import plot_utils as pu
 sys.path.append('/home/een023/uit_scripts')
 from uit_scripts.plotting import figure_defs as fd
 fd.set_rcparams_article_thickline(plt.rcParams)
+plt.rcParams['font.family'] = 'DejaVu Sans'
 # plt.style.use('ggplot')
 # pu.figure_setup()
 
@@ -24,25 +24,35 @@ fd.set_rcparams_article_thickline(plt.rcParams)
 #     'pgf.texsystem': 'pdflatex'
 # })
 
+data_path = '/home/een023/Documents/FPP_SOC_Chaos/report/data/'
 save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
 
 
-def fpp_example(save=False):
+def fpp_example(data=True, save=False):
     """Example of FPP process, exponential everything.
     """
-    p = slf.FPPProcess()
-    psde = slf.SDEProcess()
-    N = int(1e4)
-    dt = 1e-2
-    gamma = .1
-    snr = 0.
     figs = 'fpp_example'
-    p.set_params(gamma=gamma, K=int(N * gamma * dt), dt=dt, snr=snr)
-    s = p.create_realisation(fit=False)
-    pulse = p.fit_pulse(s[0], s[1], s[2])
+    file = f'{data_path}{figs}.npz'
+    p = slf.FPPProcess()
+    if not data:
+        psde = slf.SDEProcess()
+        N = int(1e4)
+        dt = 1e-2
+        gamma = .1
+        snr = 0.
+        p.set_params(gamma=gamma, K=int(N * gamma * dt), dt=dt, snr=snr)
+        s = p.create_realisation(fit=False)
+        pulse = p.fit_pulse(s[0], s[1], s[2])[0]
+
+        np.savez(file, s=s, pulse=pulse)
+    else:
+        f = np.load(file, allow_pickle=True)
+        s = f['s']
+        pulse = f['pulse']
+
     p.plot_realisation('plot_real', parameter=s, fit=False)
     plt.subplot(2, 1, 1)
-    plt.plot(s[0], pulse[0], 'r', label='Pulse')
+    plt.plot(s[0], pulse, 'r', label='Pulse')
     plt.legend()
 
     if save:
@@ -53,33 +63,41 @@ def fpp_example(save=False):
         plt.show()
 
 
-def fpp_sde_realisations(save=False):
+def fpp_sde_realisations(data=True, save=False):
     """Example of FPP and SDE realisations with varying gamma.
 
     Args:
         save (bool, optional): save if True, show if False. Defaults to False.
     """
-    pf = slf.FPPProcess()
-    ps = slf.SDEProcess()
-    N = int(1e4)
-    dt = 1e-2
-    snr = .01
+    file = f'{data_path}fpp_sde.npz'
     gamma = [.1, 1., 10.]
     figs = ['fpp_gamma', 'sde_gamma']
-    fpp = []
-    sde = []
-    for i, g in enumerate(gamma):
-        pf.set_params(gamma=g, K=int(N * g * dt), dt=dt, snr=snr)
-        ps.set_params(gamma=g, K=int(N * g * dt), dt=dt)
+    if not data:
+        pf = slf.FPPProcess()
+        ps = slf.SDEProcess()
+        N = int(1e4)
+        dt = 1e-2
+        snr = .01
+        fpp = []
+        sde = []
+        for g in gamma:
+            pf.set_params(gamma=g, K=int(N * g * dt), dt=dt, snr=snr)
+            ps.set_params(gamma=g, K=int(N * g * dt), dt=dt)
 
-        s1, _, s2 = pf.create_realisation(fit=False)
-        if g == 10.:
-            s2[:100] = np.nan
-        s = (s1, s2)
-        fpp.append(s)
+            s1, _, s2 = pf.create_realisation(fit=False)
+            if g == 10.:
+                s2[:100] = np.nan
+            s = (s1, s2)
+            fpp.append(s)
 
-        s = ps.create_realisation(fit=False)
-        sde.append(s)
+            s = ps.create_realisation(fit=False)
+            sde.append(s)
+
+        np.savez(file, fpp=fpp, sde=sde)
+    else:
+        f = np.load(file, allow_pickle=True)
+        fpp = f['fpp']
+        sde = f['sde']
 
     lab = [f'$\gamma = {g}$' for g in gamma]
     tools.ridge_plot(fpp, xlabel='$t$', ylabel='$\Phi$', labels=lab, figname=figs[0])
@@ -92,6 +110,124 @@ def fpp_sde_realisations(save=False):
             plt.savefig(f'{save_path}{f}.pdf',
                         bbox_inches='tight', format='pdf', dpi=200)
             plt.savefig(f'{save_path}{f}.pgf', bbox_inches='tight')
+    else:
+        plt.show()
+
+
+def fpp_sde_psdpdf(data=True, save=False):
+    file = f'{data_path}fpp_sde_psdpdf.npz'
+    gamma = [.1, 1., 10.]
+    figs = ['fpp_psd', 'sde_psd']
+    dt = 1e-2
+    if not data:
+        pf = slf.FPPProcess()
+        ps = slf.SDEProcess()
+        N = int(5e5)
+        snr = 0.01
+        fpp = []
+        sde = []
+        for g in gamma:
+            pf.set_params(gamma=g, K=int(N * g * dt), dt=dt, snr=snr)
+            ps.set_params(gamma=g, K=int(N * g * dt), dt=dt)
+
+            s1, _, s2 = pf.create_realisation(fit=False)
+            s = (s1, s2)
+            fpp.append(s)
+
+            s = ps.create_realisation(fit=False)
+            sde.append(s)
+
+        np.savez(file, fpp=fpp, sde=sde)
+    else:
+        f = np.load(file, allow_pickle=True)
+        fpp = f['fpp']
+        sde = f['sde']
+
+    lab = [f'$\gamma = {g}$' for g in gamma]
+    tools.ridge_plot_psd(fpp, dt, xlabel='$f$', ylabel='$S$', labels=lab, figname=figs[0])
+    tools.ridge_plot_psd(sde, dt, xlabel='$f$', ylabel='$S$', labels=lab, figname=figs[1])
+
+    if save:
+        for f in figs:
+            plt.figure(f)
+            plt.tight_layout()
+            plt.savefig(f'{save_path}{f}.pdf',
+                        bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}{f}.pgf', bbox_inches='tight', dpi=200)
+    else:
+        plt.show()
+
+
+def fpp_tw_real(data=True, save=False):
+    file = f'{data_path}fpp_tw_real.npz'
+    figs = ['var_rate', 'cox', 'tick']
+    gamma = [.1, 1., 10.]
+    if not data:
+        p = slf.FPPProcess()
+        dt = 1e-2
+        N = int(5e5)
+        snr = .01
+        fpps = [[], [], []]
+        for i, tw in enumerate(figs):
+            for g in gamma:
+                p.set_params(gamma=g, K=int(N * g * dt), dt=dt, tw=tw, snr=snr)
+                s1, _, s2 = p.create_realisation(fit=False)
+                s = (s1, s2)
+                fpps[i].append(s)
+
+        fpp_vr = fpps[0]
+        fpp_c = fpps[1]
+        fpp_t = fpps[2]
+        del fpps
+        np.savez(file, fpp_vr=fpp_vr, fpp_c=fpp_c, fpp_t=fpp_t)
+    else:
+        print('Loading data...')
+        f = np.load(file, allow_pickle=True)
+        fpp_vr = f['fpp_vr']
+        fpp_c = f['fpp_c']
+        fpp_t = f['fpp_t']
+
+    plt.rcParams['lines.linewidth'] = .4
+    lab = [f'$\gamma = {g}$' for g in gamma]
+    tools.ridge_plot(fpp_vr, xlabel='$ t $', ylabel='$\Phi$', labels=lab, figname=figs[0])
+    tools.ridge_plot(fpp_c, xlabel='$ t $', ylabel='$\Phi$', labels=lab, figname=figs[1])
+    tools.ridge_plot(fpp_t, xlabel='$ t $', ylabel='$\Phi$', labels=lab, figname=figs[2])
+
+    if save:
+        for f in figs:
+            plt.figure(f)
+            plt.tight_layout()
+            plt.savefig(f'{save_path}{f}.pdf',
+                        bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}{f}.pgf', bbox_inches='tight', dpi=200)
+    else:
+        plt.show()
+
+
+def fpp_tw_psd(save=False):
+    file = f'{data_path}fpp_tw_real.npz'
+    figs = ['var_rate_psd', 'cox_psd', 'tick_psd']
+    gamma = [.1, 1., 10.]
+    dt = 1e-2
+
+    print('Loading data...')
+    f = np.load(file, allow_pickle=True)
+    fpp_vr = f['fpp_vr']
+    fpp_c = f['fpp_c']
+    fpp_t = f['fpp_t']
+
+    lab = [f'$\gamma = {g}$' for g in gamma]
+    tools.ridge_plot_psd(fpp_vr, dt, xlabel='$ f $', ylabel='$ S $', labels=lab, figname=figs[0])
+    tools.ridge_plot_psd(fpp_c, dt, xlabel='$ f $', ylabel='$ S $', labels=lab, figname=figs[1])
+    tools.ridge_plot_psd(fpp_t, dt, xlabel='$ f $', ylabel='$ S $', labels=lab, figname=figs[2])
+
+    if save:
+        for f in figs:
+            plt.figure(f)
+            plt.tight_layout()
+            plt.savefig(f'{save_path}{f}.pdf',
+                        bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}{f}.pgf', bbox_inches='tight', dpi=200)
     else:
         plt.show()
 
@@ -146,7 +282,7 @@ def waiting_times(save=False):
     p = slf.FPPProcess()
     N = int(1e5)
     dt = 1e-2
-    gamma = [.1, 1., 10.]
+    gamma = [.1]
     TW = ['exp', 'var_rate', 'tick', 'cox']  # , 'gam', 'deg', 'unif'
     figs = [f'gamma={g}' for g in gamma]
     for j, g in enumerate(gamma):
@@ -317,7 +453,10 @@ def sde_change_gamma(save=False):
 
 if __name__ == '__main__':
     # fpp_example()
-    fpp_sde_realisations(save=True)
+    # fpp_sde_realisations()
+    # fpp_sde_psdpdf()
+    fpp_tw_real()
+    # fpp_tw_psd()
     # power_law_pulse()
     # waiting_times()
     # amplitude_dist()
