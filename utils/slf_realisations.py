@@ -66,75 +66,31 @@ def fpp_sde_realisations(save=False):
     snr = .01
     gamma = [.1, 1., 10.]
     figs = ['fpp_gamma', 'sde_gamma']
-    # figs = []
-    # for g in gamma:
-    #     for f in figg:
-    #         figs.append(f'{f}_{g}')
-    gs1 = grid_spec.GridSpec(3, 1)
-    gs2 = grid_spec.GridSpec(3, 1)
-    fig1 = plt.figure('fig1', figsize=(5, 3.5))
-    fig2 = plt.figure('fig2', figsize=(5, 3.5))
-    ax_objs1 = []
-    ax_objs2 = []
-    l2 = []
-    c = ['g', 'b', 'r']
+    fpp = []
+    sde = []
     for i, g in enumerate(gamma):
         pf.set_params(gamma=g, K=int(N * g * dt), dt=dt, snr=snr)
         ps.set_params(gamma=g, K=int(N * g * dt), dt=dt)
-        ax_objs1.append(fig1.add_subplot(gs1[i:i + 1, 0:]))
-        ax_objs2.append(fig2.add_subplot(gs2[i:i + 1, 0:]))
-        if i == 0:
-            spines = ["bottom"]
-        elif i == 2:
-            spines = ["top"]
-        else:
-            spines = ["top", "bottom"]
 
         s1, _, s2 = pf.create_realisation(fit=False)
-        print(s1.shape, s2.shape)
         if g == 10.:
             s2[:100] = np.nan
         s = (s1, s2)
-        # plt.figure(figs[0], figsize=(5, 3.5))
-        ax_objs1[-1].plot(s1, s2, f'{c[i]}', label=f'gamma = {g}')
-        # ps.plotter(*s, new_fig=False)
-        # for sp in spines:
-        #     ax_objs1[-1].spines[sp].set_visible(False)
-        # if i == 2:
-        #     plt.xlabel('$t$')
-        #     plt.tick_params(axis='x', which='both', top=False)
-        # else:
-        #     plt.tick_params(axis='x', which='both', bottom=False,
-        #                     top=False, labelbottom=False)
+        fpp.append(s)
 
         s = ps.create_realisation(fit=False)
-        # plt.figure(figs[1], figsize=(5, 3.5))
-        l = ax_objs2[-1].plot(s[0], s[1], f'{c[i]}')[0]
-        l2.append(l)
-        ax_objs2[-1].patch.set_alpha(0)
-        # ps.plotter(*s, new_fig=False)
-        for sp in spines:
-            ax_objs2[-1].spines[sp].set_visible(False)
-            ax_objs2[-1].spines['left'].set_color(f'{c[i]}')
-            ax_objs2[-1].spines['right'].set_color(f'{c[i]}')
-            ax_objs2[-1].yaxis.label.set_color(f'{c[i]}')
-            ax_objs2[-1].tick_params(axis='y', which='both', colors=f'{c[i]}')
-        if i == 2:
-            plt.xlabel('$t$')
-            plt.tick_params(axis='x', which='both', top=False)
-        else:
-            plt.tick_params(axis='x', which='both', bottom=False,
-                            top=False, labelbottom=False)
+        sde.append(s)
 
-    fig2.legend(l2, labels=[f'gamma = {g}' for g in gamma], loc='upper right',  # bbox_to_anchor=legend_pos,
-                bbox_transform=ax_objs2[0].transData)
-    gs2.update(hspace=0.)
+    lab = [f'$\gamma = {g}$' for g in gamma]
+    tools.ridge_plot(fpp, xlabel='$t$', ylabel='$\Phi$', labels=lab, figname=figs[0])
+    tools.ridge_plot(sde, xlabel='$t$', ylabel='$\Phi$', labels=lab, figname=figs[1])
 
     if save:
         for f in figs:
             plt.figure(f)
             plt.tight_layout()
-            plt.savefig(f'{save_path}{f}.pdf', bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}{f}.pdf',
+                        bbox_inches='tight', format='pdf', dpi=200)
             plt.savefig(f'{save_path}{f}.pgf', bbox_inches='tight')
     else:
         plt.show()
@@ -361,7 +317,7 @@ def sde_change_gamma(save=False):
 
 if __name__ == '__main__':
     # fpp_example()
-    fpp_sde_realisations()
+    fpp_sde_realisations(save=True)
     # power_law_pulse()
     # waiting_times()
     # amplitude_dist()

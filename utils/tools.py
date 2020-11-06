@@ -1,12 +1,15 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy import stats
-import scipy.signal as ssi
-import scipy.optimize as scop
-import scipy.integrate as si
+import itertools
 import time
 
+import matplotlib.gridspec as grid_spec
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.integrate as si
+import scipy.optimize as scop
+import scipy.signal as ssi
+from scipy import stats
 from uit_scripts.shotnoise import gen_shot_noise as gsn
+
 
 def timestamp(txt=None):
     t0 = time.localtime()
@@ -242,3 +245,54 @@ def pdf(signal, *args, new_fig=True):
         plt.xlabel('$f$')
         plt.ylabel('PDF')
         plt.legend()
+
+
+def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None):
+    fsize = (4, len(data))
+    gs = grid_spec.GridSpec(len(data), 1)
+    if figname is not None:
+        fig = plt.figure(figname, figsize=fsize)
+    else:
+        fig = plt.figure(figsize=fsize)
+    ax_objs = []
+    l2 = []
+    c = ['g', 'b', 'r', 'magenta', 'yellow', 'royalblue',
+         'chartreuse', 'firebrick', 'darkorange']
+    c = itertools.cycle(c)
+    for i, s in enumerate(data):
+        col = next(c)
+        ax_objs.append(fig.add_subplot(gs[i:i + 1, 0:]))
+        if i == 0:
+            spines = ["bottom"]
+        elif i == len(data) - 1:
+            spines = ["top"]
+        else:
+            spines = ["top", "bottom"]
+        l = ax_objs[-1].plot(s[0], s[1], col)[0]
+        l2.append(l)
+        if i == 0:
+            legend_pos = (np.mean(s[0]), np.max(s[1]))
+        ax_objs[-1].patch.set_alpha(0)
+        for sp in spines:
+            ax_objs[-1].spines[sp].set_visible(False)
+            ax_objs[-1].spines['left'].set_color(col)
+            ax_objs[-1].spines['right'].set_color(col)
+            ax_objs[-1].yaxis.label.set_color(col)
+            ax_objs[-1].tick_params(axis='y', which='both', colors=col)
+        if ylabel:
+            plt.ylabel(ylabel)
+        if i == len(data) - 1:
+            if xlabel:
+                plt.xlabel(xlabel)
+            plt.tick_params(axis='x', which='both', top=False)
+        else:
+            plt.tick_params(axis='x', which='both', bottom=False,
+                            top=False, labelbottom=False)
+
+    if labels:
+        if len(labels) == len(data):
+            fig.legend(l2, labels, loc='lower center',  bbox_to_anchor=legend_pos,
+                    bbox_transform=ax_objs[0].transData, ncol=len(data))
+        else:
+            print('Length of labels and data was not equal.')
+    gs.update(hspace=0.)
