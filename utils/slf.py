@@ -413,7 +413,6 @@ class FPPProcess(Process):
                                                       eps=self.snr, ampta=True, dynamic=True,
                                                       kerntype=self.kern_dict[self.kern], lam=.5,
                                                       TWdist=self.tw, Adist=self.amp, TWkappa=.0)
-            print(t.shape, t[-1], response.shape, self.T)
         except Exception:
             amp, ta = self.create_forcing()
             t, response = gsn.signal_convolve(amp, ta, self.T, self.dt, kernsize=2**17, kerntype=self.kern_dict[self.kern])
