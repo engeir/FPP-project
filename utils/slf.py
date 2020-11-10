@@ -324,11 +324,10 @@ class FPPProcess(Process):
             size = self.K if k_length else int(1e5)
             # Return rate as a waiting time if True, else as a changing gamma.
             scale = 1 / self.gamma if tw else self.gamma
-            tw = prob.gamma(shape=1., scale=scale, size=size)
-            # tw = prob.gamma(shape=1., scale=1 / self.gamma, size=size)
-            # tw = prob.exponential(scale=1 / self.gamma, size=size)
-            t = np.linspace(0, np.sum(tw), size)
-            rate = tw
+            rate = prob.gamma(shape=1., scale=scale, size=size)
+            # rate = prob.gamma(shape=1., scale=1 / self.gamma, size=size)
+            # rate = prob.exponential(scale=1 / self.gamma, size=size)
+            t = np.linspace(0, np.sum(rate), size)
         if any(rate < 0):
             print('Warning: Rate process includes negatives. Computing abs(rate).')
             rate = abs(rate)
