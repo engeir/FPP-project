@@ -315,7 +315,7 @@ class FPPProcess(Process):
             size = self.K if k_length else int(1e5)
             timeline = np.linspace(0., 1., size)
             t = np.linspace(0., self.T, size)
-            rate = rate_process(x0=2.)(timeline)  # pylint: disable=E1102,E1123,E1120
+            rate = rate_process(x0=1.)(timeline)  # pylint: disable=E1102,E1123,E1120
             rate = rate.reshape((-1,))
             rate *= self.gamma / rate.mean()
             rate = rate if not tw else 1 / rate
@@ -325,8 +325,7 @@ class FPPProcess(Process):
             # Return rate as a waiting time if True, else as a changing gamma.
             scale = 1 / self.gamma if tw else self.gamma
             rate = prob.gamma(shape=1., scale=scale, size=size)
-            # rate = prob.gamma(shape=1., scale=1 / self.gamma, size=size)
-            # rate = prob.exponential(scale=1 / self.gamma, size=size)
+            # rate = prob.exponential(scale=scale, size=size)
             t = np.linspace(0, np.sum(rate), size)
         if any(rate < 0):
             print('Warning: Rate process includes negatives. Computing abs(rate).')
@@ -346,9 +345,13 @@ class FPPProcess(Process):
             amp, _, _ = gsn.amp_ta(self.gamma, self.K)
             return amp, ta
         if version == 'cox':
-            rate, t = self.create_rate(Vrate, tw=True)
+            k_length = True
+            rate, _ = self.create_rate(Vrate, k_length=k_length, tw=True)
+            if not k_length:
+                idx = np.round(np.linspace(0, len(rate) - 1, self.K)).astype(int)
+                rate = rate[idx]
             amp, ta, self.T = gsn.amp_ta(
-                1 / rate, self.K, TWdist='exp', Adist=self.amp, TWkappa=.1)
+                1 / rate, self.K, TWdist='gam', Adist=self.amp, TWkappa=.1)
             return amp, ta
         if version == 'tick':
             rate, t = self.create_rate(Vrate, k_length=False)
