@@ -18,11 +18,11 @@ from abc import ABC, abstractmethod, abstractproperty
 import matplotlib.pyplot as plt
 import numpy as np
 import sdepy  # pylint: disable=E0401
+import tick.base as tb
+import tick.hawkes as th
+import tick.plot as tp
 from scipy.signal import fftconvolve
 from sklearn.datasets import make_blobs
-import tick.hawkes as th
-import tick.base as tb
-import tick.plot as tp
 
 sys.path.append('/home/een023/uit_scripts')
 from uit_scripts.misc import runge_kutta_SDE as rksde  # pylint: disable=E0401
@@ -36,6 +36,7 @@ import tools
 
 class Realisation:
     """Create actual realisations of an FPP process."""
+
     def __init__(self, process='FPP'):
         if process == 'SDE':
             self.p = SDEProcess()
@@ -86,6 +87,7 @@ class Process(ABC):
     Arguments:
         ABC {class} -- abstract base class that all Process objects inherit from
     """
+
     def __init__(self):
         self.gamma = 1.
         self.K = 1000
@@ -136,14 +138,16 @@ class Process(ABC):
             np.ndarray: see specific classes for number of outputs
         """
 
-    def plot_realisation(self, *plot, parameter=None, **kwargs):  #, all_plots=False, real=False, psd=False):
+    # , all_plots=False, real=False, psd=False):
+    def plot_realisation(self, *plot, parameter=None, **kwargs):
         """Plot arrays created by a realisation of the process.
         """
         for key in plot:
             try:
                 plt_func = getattr(self, key)
             except AttributeError:
-                print(f'No plots made. "{key}" is not an attribute of Process.')
+                print(
+                    f'No plots made. "{key}" is not an attribute of Process.')
             else:
                 plt_func(parameter=parameter, **kwargs)
         # if all_plots:
@@ -233,7 +237,8 @@ class SDEProcess(Process):
         # x = rate_process(x0=1e-9, gamma=self.gamma)(timeline)  # pylint: disable=E1102,E1123,E1120
         # x = x.reshape((-1,))
 
-        x = rksde.SDE_SLE(self.dt, int(self.T / self.dt), x0=self.gamma, gamma=self.gamma, log=True)
+        x = rksde.SDE_SLE(self.dt, int(self.T / self.dt),
+                          x0=self.gamma, gamma=self.gamma, log=True)
         # x = (x - x.mean()) / x.std()
         t = np.arange(self.T / self.dt) * self.dt
         if fit:
@@ -244,7 +249,8 @@ class SDEProcess(Process):
 
     @staticmethod
     def plotter(*args, new_fig=True):
-        assert len(args) == 2 or len(args) == 7, f'length of args is "{len(args)}"'
+        assert len(args) == 2 or len(
+            args) == 7, f'length of args is "{len(args)}"'
         if new_fig == True:
             plt.figure(figsize=(9, 6))
         if len(args) == 2:
@@ -285,21 +291,88 @@ class FPPProcess(Process):
                           'lorentz': 2,
                           'gauss': 3,
                           'sech': 4,
-                          'power': 5#,
-                        #   '1exp2s': 6
+                          'power': 5  # ,
+                          #   '1exp2s': 6
                           }
         self.kern = '1exp'
+        self.rate = 'n-random'
         self.tw = 'exp'
         self.amp = 'exp'
+
+    def create_rate(self, version, k_length=True, tw=False):
+        assert version in ['ou', 'n-random']
+        if version == 'ou':
+            # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian motions. 2018. hal-01919754
+            # https://hal.archives-ouvertes.fr/hal-01919754/document
+            # and https://sdepy.readthedocs.io/en/v1.1.1/intro.html#id2
+            # This uses a Wiener process as dW(t)
+            @sdepy.integrate
+            def rate_process(t, x, mu=2., k=.1, sigma=1.):
+                return {'dt': k * (mu - x), 'dw': sigma}
+            # k: speed of reversion = .1
+            # mu: long-term average position = 1.
+            # sigma: volatility parameter = 1.
+            size = self.K if k_length else int(1e5)
+            timeline = np.linspace(0., 1., size)
+            t = np.linspace(0., self.T, size)
+            rate = rate_process(x0=2.)(timeline)  # pylint: disable=E1102,E1123,E1120
+            rate = rate.reshape((-1,))
+            rate *= self.gamma / rate.mean()
+            rate = rate if not tw else 1 / rate
+        elif version == 'n-random':
+            prob = np.random.default_rng()
+            size = self.K if k_length else int(1e5)
+            # Return rate as a waiting time if True, else as a changing gamma.
+            scale = 1 / self.gamma if tw else self.gamma
+            tw = prob.gamma(shape=1., scale=scale, size=size)
+            # tw = prob.gamma(shape=1., scale=1 / self.gamma, size=size)
+            # tw = prob.exponential(scale=1 / self.gamma, size=size)
+            t = np.linspace(0, np.sum(tw), size)
+            rate = tw
+        if any(rate < 0):
+            print('Warning: Rate process includes negatives. Computing abs(rate).')
+            rate = abs(rate)
+        return rate, t
+
+    def create_ampta(self, version, Vrate):
+        assert version in ['var_rate', 'cox', 'tick']
+        if version == 'var_rate':
+            rate, t = self.create_rate(Vrate, k_length=False)
+            int_thresholds = np.linspace(0, np.sum(rate), self.K)
+            c_sum = np.cumsum(rate)
+            ta = tools.find_nearest(c_sum, int_thresholds)
+            ta = t[ta]
+            # Normalize arrival times to within T_max
+            ta = ta * self.T / np.ceil(np.max(ta))
+            amp, _, _ = gsn.amp_ta(self.gamma, self.K)
+            return amp, ta
+        if version == 'cox':
+            rate, t = self.create_rate(Vrate, tw=True)
+            amp, ta, self.T = gsn.amp_ta(
+                1 / rate, self.K, TWdist='exp', Adist=self.amp, TWkappa=.1)
+            return amp, ta
+        if version == 'tick':
+            rate, t = self.create_rate(Vrate, k_length=False)
+            tf = tb.TimeFunction((t, rate), dt=self.dt)
+            ipp = th.SimuInhomogeneousPoisson([tf], end_time=self.T, verbose=True)
+            ipp.track_intensity()  # Accepts float > 0 to set time step of reproduced rate process
+            ipp.threshold_negative_intensity()
+            ipp.simulate()
+            ta = ipp.timestamps[0]
+            self.K = len(ta)
+            amp, _, _ = gsn.amp_ta(self.gamma, self.K)
+        return amp, ta
 
     def create_forcing(self):
         """
         docstring
         """
+        print('Warning: This method is outdated. Use `create_ampta`.')
         kinds = ['cluster', 'var_rate', 'cox', 'cox_var_rate', 'tick']
         assert self.tw in kinds, f'The "kind" must be on of {kinds}, not {self.tw}'
         if self.tw == 'cluster':
-            x, _ = make_blobs(n_samples=self.K, centers=100, cluster_std=.1, n_features=1, random_state=0)
+            x, _ = make_blobs(n_samples=self.K, centers=100,
+                              cluster_std=.1, n_features=1, random_state=0)
             x = x.reshape((-1,))
             # TW = np.insert(x, 0, 0.)
             # ta = np.cumsum(TW[:-1])
@@ -322,7 +395,8 @@ class FPPProcess(Process):
             timeline = np.linspace(0., 1., int(1e5))
             t = np.linspace(0., self.T, int(1e5))
             x = rate_process(x0=1.)(timeline)  # pylint: disable=E1102,E1123,E1120
-            x = self.gamma * (x - np.min(x)) / (np.max(x) - np.min(x)) + self.gamma
+            x = self.gamma * (x - np.min(x)) / \
+                (np.max(x) - np.min(x)) + self.gamma
             x -= np.mean(x)
             x = abs(x)
             int_thresholds = np.linspace(0, np.sum(x), self.K)
@@ -332,10 +406,11 @@ class FPPProcess(Process):
             amp, _, _ = gsn.amp_ta(self.gamma, self.K)
         elif self.tw == 'cox':
             prob = np.random.default_rng()
-            # tw = prob.gamma(shape=1., scale=1 / self.gamma, size=self.K)
-            tw = prob.exponential(scale=1 / self.gamma, size=self.K)
+            tw = prob.gamma(shape=1., scale=1 / self.gamma, size=self.K)
+            # tw = prob.exponential(scale=1 / self.gamma, size=self.K)
             # tw = prob.poisson(lam=1 / self.gamma, size=self.K)
-            amp, ta, self.T = gsn.amp_ta(1 / tw, self.K, TWdist='exp', Adist=self.amp, TWkappa=.1)
+            amp, ta, self.T = gsn.amp_ta(
+                1 / tw, self.K, TWdist='exp', Adist=self.amp, TWkappa=.1)
         elif self.tw == 'cox_var_rate':
             # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian motions. 2018. hal-01919754
             # https://hal.archives-ouvertes.fr/hal-01919754/document
@@ -352,7 +427,8 @@ class FPPProcess(Process):
             t = np.linspace(0., self.T, self.K)
             x = rate_process(x0=2.)(timeline)  # pylint: disable=E1102,E1123,E1120
             g = x / 2 * self.gamma
-            amp, ta, self.T = gsn.amp_ta(g, self.K, TWdist='exp', Adist=self.amp, TWkappa=.1)
+            amp, ta, self.T = gsn.amp_ta(
+                g, self.K, TWdist='exp', Adist=self.amp, TWkappa=.1)
         elif self.tw == 'tick':
             # https://arxiv.org/pdf/1707.03003.pdf
             @sdepy.integrate
@@ -372,7 +448,8 @@ class FPPProcess(Process):
             # plt.plot(t, x)
             # === CREATE Inhomogeneous Poisson process ===
             tf = tb.TimeFunction((t, x), dt=self.dt)
-            ipp = th.SimuInhomogeneousPoisson([tf], end_time=self.T, verbose=False)
+            ipp = th.SimuInhomogeneousPoisson(
+                [tf], end_time=self.T, verbose=False)
             ipp.track_intensity()  # Accepts float > 0 to set time step of reproduced rate process
             ipp.threshold_negative_intensity()
             ipp.simulate()
@@ -391,7 +468,8 @@ class FPPProcess(Process):
             # tp.plot_point_process(ipp)
             # sys.exit()
         else:
-            amp, ta, self.T = gsn.amp_ta(self.gamma, self.K, TWdist=self.tw, Adist=self.amp)
+            amp, ta, self.T = gsn.amp_ta(
+                self.gamma, self.K, TWdist=self.tw, Adist=self.amp)
 
         return amp, ta
 
@@ -409,13 +487,15 @@ class FPPProcess(Process):
         # Equal seeds give correlated amplitude and waiting times.
         # prev. good seeds: (20, 31)
         try:
-            t, _, response, amp, ta = gsn.make_signal(self.gamma, self.K, self.dt,# kernsize=2**17,
+            t, _, response, amp, ta = gsn.make_signal(self.gamma, self.K, self.dt,  # kernsize=2**17,
                                                       eps=self.snr, ampta=True, dynamic=True,
                                                       kerntype=self.kern_dict[self.kern], lam=.5,
                                                       TWdist=self.tw, Adist=self.amp, TWkappa=.0)
         except Exception:
-            amp, ta = self.create_forcing()
-            t, response = gsn.signal_convolve(amp, ta, self.T, self.dt, kernsize=2**17, kerntype=self.kern_dict[self.kern])
+            # amp, ta = self.create_forcing()
+            amp, ta = self.create_ampta(self.tw, self.rate)
+            t, response = gsn.signal_convolve(
+                amp, ta, self.T, self.dt, kernsize=2**17, kerntype=self.kern_dict[self.kern])
 
         ta_index = np.ceil(ta / self.dt).astype(int)
         forcing = np.zeros(t.size)
@@ -432,7 +512,8 @@ class FPPProcess(Process):
             parameter = self.create_realisation(fit=False)
         else:
             if isinstance(parameter, np.ndarray):
-                raise TypeError('"plot_tw" only works if both the time and forcing arrays are sent in')
+                raise TypeError(
+                    '"plot_tw" only works if both the time and forcing arrays are sent in')
         t = parameter[0]
         f = parameter[1]
         ta = t[f > 0]
@@ -444,7 +525,8 @@ class FPPProcess(Process):
 
     @staticmethod
     def plotter(*args, new_fig=True):
-        assert len(args) == 7 or len(args) == 3, f'length of args is "{len(args)}"'
+        assert len(args) == 7 or len(
+            args) == 3, f'length of args is "{len(args)}"'
         if new_fig == True:
             plt.figure(figsize=(6, 4))
         if len(args) == 7:
