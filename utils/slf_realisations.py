@@ -10,6 +10,7 @@ import plot_utils as pu
 
 sys.path.append('/home/een023/uit_scripts')
 from uit_scripts.plotting import figure_defs as fd
+import uit_scripts.stat_analysis as sa
 fd.set_rcparams_article_thickline(plt.rcParams)
 plt.rcParams['font.family'] = 'DejaVu Sans'
 # plt.style.use('ggplot')
@@ -130,7 +131,7 @@ def fpp_sde_real_L(data=True, save=False):
         ps = slf.SDEProcess()
         N = int(1e6)
         dt = 1e-2
-        snr = .01
+        snr = .0
         fpp = []
         sde = []
         for g in gamma:
@@ -160,6 +161,7 @@ def fpp_sde_real_L(data=True, save=False):
 
     if save:
         for f in figs:
+            print(f'Saving to {save_path}{f}.*')
             plt.figure(f)
             plt.tight_layout()
             plt.savefig(f'{save_path}{f}.pdf',
@@ -206,6 +208,7 @@ def fpp_sde_psdpdf(data=True, save=False):
 
     if save:
         for f in figs:
+            print(f'Saving to {save_path}{f}.*')
             plt.figure(f)
             plt.tight_layout()
             plt.savefig(f'{save_path}{f}.pdf',
@@ -217,14 +220,14 @@ def fpp_sde_psdpdf(data=True, save=False):
 
 def fpp_tw_real(data=True, save=False):
     file = f'{data_path}fpp_tw_real.npz'
-    rate = ['ou', 'ou']
+    rate = ['n-random', 'n-random']
     figs = ['cox', 'tick']
     gamma = [.01, .1, 1.]
     if not data:
         p = slf.FPPProcess()
         dt = 1e-2
         N = int(1e6)
-        snr = .01
+        snr = .0
         fpps = [[], []]
         for i, (r, tw) in enumerate(zip(rate, figs)):
             for g in gamma:
@@ -374,43 +377,78 @@ def waiting_times(save=False):
         plt.show()
 
 
-def amplitude_dist(save=False):
+def amplitude_dist(data=True, save=False):
     """Plot psd and pdf for different amp distributions.
 
     Observe: (as expected)
         psd do not change
         pdf do change
     """
+    file = f'{data_path}amps.npz'
     amp = ['exp', 'pareto', 'gam', 'unif', 'ray', 'deg']  # 'alap'
     p = slf.FPPProcess()
     N = int(1e5)
-    dt = 1e-1
+    dt = 1e-2
     g = 1.
-    figs = ['psd', 'pdf']
-    for i, a in enumerate(amp):
-        p.set_params(gamma=g, K=int(N * g * dt), dt=dt, amp=a)
-        s = p.create_realisation(fit=False)
-        # p.plot_realisation('plot_real', parameter=s)
+    figs = ['psd1', 'psd2', 'pdf']
+    data1 = []
+    data2 = []
+    amps = []
+    if not data:
+        for i, a in enumerate(amp):
+            p.set_params(gamma=g, K=int(N * g * dt), dt=dt, amp=a)
+            s = p.create_realisation(fit=False)
+            # p.plot_realisation('plot_real', parameter=s)
+            if i < 3:
+                data1.append([s[0], s[-1]])
+            else:
+                data2.append([s[0], s[-1]])
+            # x, y = tools.est_pdf(s[-1])
+            y, _, x = sa.distribution(s[-1], 10)
+            amps.append([x, y])
 
-        plt.figure(figs[0])
-        plt.subplot(3, 2, i + 1)
-        plt.title(f'Adist = {a}')
-        p.plot_realisation('plot_psd', parameter=s[-1], fs=dt, new_fig=False)
-        # tools.psd(s[-1], new_fig=False)
+            # plt.figure(figs[0])
+            # plt.subplot(3, 2, i + 1)
+            # plt.title(f'Adist = {a}')
+            # p.plot_realisation('plot_psd', parameter=s[-1], fs=dt, new_fig=False)
+            # # tools.psd(s[-1], new_fig=False)
 
-        plt.figure(figs[1])
-        plt.subplot(3, 2, i + 1)
-        plt.title(f'Adist = {a}')
-        p.plot_realisation('plot_pdf', parameter=s[-1], new_fig=False)
-        # tools.pdf(s[-1], new_fig=False)
+            # plt.figure(figs[1])
+            # plt.subplot(3, 2, i + 1)
+            # plt.title(f'Adist = {a}')
+            # p.plot_realisation('plot_pdf', parameter=s[-1], new_fig=False)
+            # # tools.pdf(s[-1], new_fig=False)
+
+        np.savez(file, data1=data1, data2=data2, amps=amps)
+    else:
+        print(f'Loading data from {file}')
+        f = np.load(file, allow_pickle=True)
+        data1 = f['data1']
+        data2 = f['data2']
+        amps = f['amps']
+
+    lab = [f'{a}' for a in amp]
+    tools.ridge_plot_psd(data1, dt, xlabel='$ f $', ylabel='PSD', labels=lab[:3], figname=figs[0])
+    tools.ridge_plot_psd(data2, dt, xlabel='$ f $', ylabel='PSD', labels=lab[3:], figname=figs[1])
+    tools.ridge_plot(amps, xlabel='$ f $', ylabel='PDF', labels=lab, figname=figs[2], y_scale=.72)
+    # plt.figure(figs[2])
+    # clrs = [(r, 0, 0) for r in np.linspace(0, 1, len(lab))]
+    # line_styles = ['-', '--', '-.', ':',
+    #                (0, (3, 5, 1, 5, 1, 5)),
+    #                (0, (3, 1, 1, 1, 1, 1))]
+    # for l, ll, a in zip(clrs, lab, amps):
+    #     plt.plot(a[0], a[1], color=l, label=ll, alpha=.8)
+    # plt.legend()
 
     if save:
         for f in figs:
+            print(f'Saving to {save_path}adist_{f}.*')
             plt.figure(f)
             plt.tight_layout()
             plt.savefig(f'{save_path}adist_{f}.pdf',
-                        bbox_inches='tight', format='pdf', dpi=600)
-            plt.savefig(f'{save_path}adist_{f}.pgf', bbox_inches='tight')
+                        bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}adist_{f}.pgf',
+                        bbox_inches='tight', dpi=200)
     else:
         plt.show()
 
@@ -421,7 +459,7 @@ if __name__ == '__main__':
     # fpp_sde_real_L()
     # fpp_sde_psdpdf()
     # fpp_tw_real(data=False)
-    fpp_tw_psd()
+    # fpp_tw_psd()
     # power_law_pulse()
     # waiting_times()
-    # amplitude_dist()
+    amplitude_dist(data=False)

@@ -254,6 +254,20 @@ def pdf(signal, *args, new_fig=True):
         plt.legend()
 
 
+def est_pdf(signal):
+    """Estimate the PDF of `signal`.
+
+    Args:
+        signal (np.ndarray): the signal that is analysed
+    """
+    # bins = np.linspace(-5, 5, 30)
+    histogram, bins = np.histogram(signal, bins=10, density=True)
+    bin_centers = 0.5*(bins[1:] + bins[:-1])
+    # Compute the PDF on the bin centers from scipy distribution object
+    # norm_pdf = stats.norm.pdf(bin_centers)
+    return bin_centers, histogram
+
+
 def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=None):
     """Plot data in a ridge plot with fixed width and fixed height per ridge.
 
@@ -332,7 +346,7 @@ def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=N
     gs.update(hspace=0.)
 
 
-def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None):
+def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None, y_scale=1.):
     """Plot data in a ridge plot with fixed width and fixed height per ridge.
 
     Args:
@@ -341,8 +355,9 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None):
         ylabel (bool or str, optional): y-label placed at all ridge y-axis, nothing if False. Defaults to False.
         labels (bool or list, optional): list of str with the labels of the ridges; must be the same length as `data`. Defaults to False.
         figname (None or str, optional): first arg in plt.figure(); useful for tracking figure-object. Defaults to None.
+        y_scale (float, optional): scale of y axis relative to the default. Defaults to 1.
     """
-    fsize = (4, len(data))
+    fsize = (4, y_scale * len(data))
     gs = grid_spec.GridSpec(len(data), 1)
     if figname is not None:
         fig = plt.figure(figname, figsize=fsize)
@@ -350,9 +365,18 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None):
         fig = plt.figure(figsize=fsize)
     ax_objs = []
     l2 = []
-    c = ['r', 'g', 'b', 'magenta', 'yellow', 'royalblue',
-         'chartreuse', 'firebrick', 'darkorange']
+    c = ['r', 'g', 'b', 'magenta', 'darkorange',
+         'chartreuse', 'firebrick', 'yellow', 'royalblue']
     c = itertools.cycle(c)
+    x_min, x_max = np.inf, - np.inf
+    for s in data:
+        t = s[0]
+        t_min, t_max = np.min(t), np.max(t)
+        x_min = t_min if t_min < x_min else x_min
+        x_max = t_max if t_max > x_max else x_max
+    diff = .05 * (x_max - x_min)
+    x_min -= diff
+    x_max += diff
     for i, s in enumerate(data):
         col = next(c)
         ax_objs.append(fig.add_subplot(gs[i:i + 1, 0:]))
@@ -365,12 +389,16 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None):
         l = ax_objs[-1].plot(s[0], s[1], col)[0]
         l2.append(l)
         ax_objs[-1].patch.set_alpha(0)
+        plt.xlim([x_min, x_max])
+        if i % 2:
+            ax_objs[-1].tick_params(axis='y', which='both',
+                            labelleft=False, labelright=True)
         for sp in spines:
             ax_objs[-1].spines[sp].set_visible(False)
-            ax_objs[-1].spines['left'].set_color(col)
-            ax_objs[-1].spines['right'].set_color(col)
-            ax_objs[-1].yaxis.label.set_color(col)
-            ax_objs[-1].tick_params(axis='y', which='both', colors=col)
+        ax_objs[-1].spines['left'].set_color(col)
+        ax_objs[-1].spines['right'].set_color(col)
+        ax_objs[-1].yaxis.label.set_color(col)
+        ax_objs[-1].tick_params(axis='y', which='both', colors=col)
         if ylabel:
             plt.ylabel(ylabel)
         if i == len(data) - 1:
@@ -383,8 +411,14 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None):
 
     if labels:
         if len(labels) == len(data):
+            l_d = len(data)
+            c_max = 4
+            n_row = int(np.ceil(l_d / c_max))
+            n_col = 1
+            while l_d > n_col * n_row:
+                n_col += 1
             fig.legend(l2, labels, loc='lower center',  bbox_to_anchor=(.5, 1.),
-                    bbox_transform=ax_objs[0].transAxes, ncol=len(data))
+                    bbox_transform=ax_objs[0].transAxes, ncol=n_col)
         else:
             print('Length of labels and data was not equal.')
     gs.update(hspace=0.)

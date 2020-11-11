@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod, abstractproperty
 
 import matplotlib.pyplot as plt
 import numpy as np
-import sdepy  # pylint: disable=E0401
+import sdepy
 import tick.base as tb
 import tick.hawkes as th
 import tick.plot as tp
@@ -301,6 +301,7 @@ class FPPProcess(Process):
 
     def create_rate(self, version, k_length=True, tw=False):
         assert version in ['ou', 'n-random']
+        # Use an Ornstein-Uhlenbeck process as the rate
         if version == 'ou':
             # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian motions. 2018. hal-01919754
             # https://hal.archives-ouvertes.fr/hal-01919754/document
@@ -319,10 +320,11 @@ class FPPProcess(Process):
             rate = rate.reshape((-1,))
             rate *= self.gamma / rate.mean()
             rate = rate if not tw else 1 / rate
+        # Use n random numbers as the rate, drawn from a gamma distribution
         elif version == 'n-random':
             prob = np.random.default_rng()
             size = self.K if k_length else int(1e5)
-            # Return rate as a waiting time if True, else as a changing gamma.
+            # Return rate as a waiting time if True, else as a varying gamma.
             scale = 1 / self.gamma if tw else self.gamma
             rate = prob.gamma(shape=1., scale=scale, size=size)
             # rate = prob.exponential(scale=scale, size=size)
@@ -355,7 +357,7 @@ class FPPProcess(Process):
             return amp, ta
         if version == 'tick':
             rate, t = self.create_rate(Vrate, k_length=False)
-            tf = tb.TimeFunction((t, rate), dt=self.dt)
+            tf = tb.TimeFunction((t, rate))  #, dt=self.dt)
             ipp = th.SimuInhomogeneousPoisson([tf], end_time=self.T, verbose=True)
             ipp.track_intensity()  # Accepts float > 0 to set time step of reproduced rate process
             ipp.threshold_negative_intensity()
