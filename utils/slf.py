@@ -358,7 +358,7 @@ class FPPProcess(Process):
         if version == 'tick':
             rate, t = self.create_rate(Vrate, k_length=False)
             tf = tb.TimeFunction((t, rate))  #, dt=self.dt)
-            ipp = th.SimuInhomogeneousPoisson([tf], end_time=self.T, verbose=True)
+            ipp = th.SimuInhomogeneousPoisson([tf], end_time=self.T, verbose=False)
             ipp.track_intensity()  # Accepts float > 0 to set time step of reproduced rate process
             ipp.threshold_negative_intensity()
             ipp.simulate()

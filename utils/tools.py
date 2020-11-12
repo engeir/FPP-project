@@ -346,7 +346,7 @@ def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=N
     gs.update(hspace=0.)
 
 
-def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None, y_scale=1.):
+def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=None, y_scale=1.):
     """Plot data in a ridge plot with fixed width and fixed height per ridge.
 
     Args:
@@ -356,6 +356,10 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None, y_s
         labels (bool or list, optional): list of str with the labels of the ridges; must be the same length as `data`. Defaults to False.
         figname (None or str, optional): first arg in plt.figure(); useful for tracking figure-object. Defaults to None.
         y_scale (float, optional): scale of y axis relative to the default. Defaults to 1.
+
+    *args:
+        'slalomaxis': numbers on the y axis change between left and right to prevent cluttering
+        'x_lim_S': limit the x axis based on the smallest x ticks insted of the largest (default)
     """
     fsize = (4, y_scale * len(data))
     gs = grid_spec.GridSpec(len(data), 1)
@@ -368,15 +372,10 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None, y_s
     c = ['r', 'g', 'b', 'magenta', 'darkorange',
          'chartreuse', 'firebrick', 'yellow', 'royalblue']
     c = itertools.cycle(c)
-    x_min, x_max = np.inf, - np.inf
-    for s in data:
-        t = s[0]
-        t_min, t_max = np.min(t), np.max(t)
-        x_min = t_min if t_min < x_min else x_min
-        x_max = t_max if t_max > x_max else x_max
-    diff = .05 * (x_max - x_min)
-    x_min -= diff
-    x_max += diff
+    if 'x_lim_S' in args:
+        x_min, x_max = x_limit([d[0] for d in data], False)
+    else:
+        x_min, x_max = x_limit([d[0] for d in data])
     for i, s in enumerate(data):
         col = next(c)
         ax_objs.append(fig.add_subplot(gs[i:i + 1, 0:]))
@@ -390,9 +389,10 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None, y_s
         l2.append(l)
         ax_objs[-1].patch.set_alpha(0)
         plt.xlim([x_min, x_max])
-        if i % 2:
-            ax_objs[-1].tick_params(axis='y', which='both',
-                            labelleft=False, labelright=True)
+        if 'slalomaxis' in args:
+            if i % 2:
+                ax_objs[-1].tick_params(axis='y', which='both',
+                                labelleft=False, labelright=True)
         for sp in spines:
             ax_objs[-1].spines[sp].set_visible(False)
         ax_objs[-1].spines['left'].set_color(col)
@@ -422,3 +422,20 @@ def ridge_plot(data, xlabel=False, ylabel=False, labels=False, figname=None, y_s
         else:
             print('Length of labels and data was not equal.')
     gs.update(hspace=0.)
+
+
+def x_limit(data, maxx=True):
+    x_min = np.inf if maxx else - np.inf
+    x_max = - np.inf if maxx else np.inf
+    for t in data:
+        t_min, t_max = np.min(t), np.max(t)
+        if maxx:
+            x_min = t_min if t_min < x_min else x_min
+            x_max = t_max if t_max > x_max else x_max
+        else:
+            x_min = t_min if t_min > x_min else x_min
+            x_max = t_max if t_max < x_max else x_max
+    diff = .05 * (x_max - x_min)
+    x_min -= diff
+    x_max += diff
+    return x_min, x_max

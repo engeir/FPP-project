@@ -174,7 +174,7 @@ def fpp_sde_real_L(data=True, save=False):
 def fpp_sde_psdpdf(data=True, save=False):
     # file = f'{data_path}fpp_sde_psdpdf.npz'
     file = f'{data_path}fpp_sde_L.npz'
-    gamma = [.1, 1., 10.]
+    gamma = [.01, .1, 1.]
     figs = ['fpp_psd', 'sde_psd']
     dt = 1e-2
     if not data:
@@ -297,6 +297,95 @@ def fpp_tw_psd(save=False):
         plt.show()
 
 
+def fpptw_sde_real(data=True, save=False):
+    """Example of FPP with different waiting times and SDE realisations with varying gamma.
+
+    Args:
+        data (bool, optional): use stored data from .npz if True, create new if False. Defaults to True.
+        save (bool, optional): save if True, show if False. Defaults to False.
+    """
+    file = f'{data_path}fpptw_sde.npz'
+    figs = ['fpp', 'sde']
+    gamma = [.01, .1, 1.]
+    rate = 'ou'
+    tw = 'cox'
+    if not data:
+        pf = slf.FPPProcess()
+        ps = slf.SDEProcess()
+        N = int(1e6)
+        dt = 1e-2
+        snr = .0
+        fpp = []
+        sde = []
+        for g in gamma:
+            pf.set_params(gamma=g, K=int(N * g * dt), dt=dt,
+                          snr=snr, rate=rate, tw=tw)
+            ps.set_params(gamma=g, K=int(N * g * dt), dt=dt)
+
+            s1, _, s2 = pf.create_realisation(fit=False)
+            if g == 10.:
+                s2[:100] = np.nan
+            s = (s1, s2)
+            fpp.append(s)
+
+            s = ps.create_realisation(fit=False)
+            sde.append(s)
+
+        np.savez(file, fpp=fpp, sde=sde)
+    else:
+        print(f'Loading data from {file}')
+        f = np.load(file, allow_pickle=True)
+        fpp = f['fpp']
+        sde = f['sde']
+
+    plt.rcParams['lines.linewidth'] = .4
+    lab = [f'$\gamma = {g}$' for g in gamma]
+    tools.ridge_plot(fpp, xlabel='$ t $', ylabel='$\Phi$',
+                     labels=lab, figname=figs[0])
+    tools.ridge_plot(sde, xlabel='$ t $', ylabel='$\Phi$',
+                     labels=lab, figname=figs[1])
+
+    if save:
+        for f in figs:
+            print(f'Saving to {save_path}comp_{f}.*')
+            plt.figure(f)
+            plt.tight_layout()
+            plt.savefig(f'{save_path}comp_{f}.pdf',
+                        bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}comp_{f}.pgf', bbox_inches='tight', dpi=200)
+    else:
+        plt.show()
+
+
+def fpptw_sde_psd(data=True, save=False):
+    file = f'{data_path}fpptw_sde.npz'
+    gamma = [.01, .1, 1.]
+    figs = ['fpp_psd', 'sde_psd']
+    dt = 1e-2
+    
+    print(f'Loading data from {file}')
+    f = np.load(file, allow_pickle=True)
+    fpp = f['fpp']
+    sde = f['sde']
+
+    lab = [f'$\gamma = {g}$' for g in gamma]
+    tools.ridge_plot_psd(fpp, dt, xlabel='$ f $',
+                         ylabel='$ S $', labels=lab, figname=figs[0])
+    tools.ridge_plot_psd(sde, dt, xlabel='$ f $',
+                         ylabel='$ S $', labels=lab, figname=figs[1])
+
+    if save:
+        for f in figs:
+            print(f'Saving to {save_path}comp_{f}.*')
+            plt.figure(f)
+            plt.tight_layout()
+            plt.savefig(f'{save_path}comp_{f}.pdf',
+                        bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}comp_{f}.pgf', bbox_inches='tight', dpi=200)
+    else:
+        plt.show()
+
+
 def power_law_pulse(save=False):
     """Power law kernel function.
 
@@ -404,7 +493,7 @@ def amplitude_dist(data=True, save=False):
             else:
                 data2.append([s[0], s[-1]])
             # x, y = tools.est_pdf(s[-1])
-            y, _, x = sa.distribution(s[-1], 10)
+            y, _, x = sa.distribution(s[-1], 100)
             amps.append([x, y])
 
             # plt.figure(figs[0])
@@ -430,7 +519,7 @@ def amplitude_dist(data=True, save=False):
     lab = [f'{a}' for a in amp]
     tools.ridge_plot_psd(data1, dt, xlabel='$ f $', ylabel='PSD', labels=lab[:3], figname=figs[0])
     tools.ridge_plot_psd(data2, dt, xlabel='$ f $', ylabel='PSD', labels=lab[3:], figname=figs[1])
-    tools.ridge_plot(amps, xlabel='$ f $', ylabel='PDF', labels=lab, figname=figs[2], y_scale=.72)
+    tools.ridge_plot(amps, xlabel='$ \Phi $', ylabel='PDF', labels=lab, figname=figs[2], y_scale=.72)
     # plt.figure(figs[2])
     # clrs = [(r, 0, 0) for r in np.linspace(0, 1, len(lab))]
     # line_styles = ['-', '--', '-.', ':',
@@ -458,8 +547,10 @@ if __name__ == '__main__':
     # fpp_sde_realisations()
     # fpp_sde_real_L()
     # fpp_sde_psdpdf()
-    # fpp_tw_real(data=False)
+    # fpp_tw_real()
     # fpp_tw_psd()
+    fpptw_sde_real()
+    # fpptw_sde_psd()
     # power_law_pulse()
     # waiting_times()
-    amplitude_dist(data=False)
+    # amplitude_dist()
