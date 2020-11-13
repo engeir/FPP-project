@@ -308,7 +308,7 @@ class FPPProcess(Process):
             # and https://sdepy.readthedocs.io/en/v1.1.1/intro.html#id2
             # This uses a Wiener process as dW(t)
             @sdepy.integrate
-            def rate_process(t, x, mu=2., k=.1, sigma=1.):
+            def rate_process(t, x, mu=1., k=.1, sigma=1.):
                 return {'dt': k * (mu - x), 'dw': sigma}
             # k: speed of reversion = .1
             # mu: long-term average position = 1.
@@ -316,9 +316,13 @@ class FPPProcess(Process):
             size = self.K if k_length else int(1e5)
             timeline = np.linspace(0., 1., size)
             t = np.linspace(0., self.T, size)
-            rate = rate_process(x0=1.)(timeline)  # pylint: disable=E1102,E1123,E1120
+            rate = rate_process(x0=1., k=.01, sigma=.01)(t)  # pylint: disable=E1102,E1123,E1120
+            # rate = rate_process(x0=1., k=.01, sigma=.01)(timeline)  # pylint: disable=E1102,E1123,E1120
+            # rate = rate.reshape((-1,))
+            # rate *= self.gamma / rate.mean()
             rate = rate.reshape((-1,))
-            rate *= self.gamma / rate.mean()
+            rate -= rate.min()
+            rate = rate * self.gamma * .995 / rate.mean() + .005
             rate = rate if not tw else 1 / rate
         # Use n random numbers as the rate, drawn from a gamma distribution
         elif version == 'n-random':
@@ -328,7 +332,7 @@ class FPPProcess(Process):
             scale = 1 / self.gamma if tw else self.gamma
             rate = prob.gamma(shape=1., scale=scale, size=size)
             # rate = prob.exponential(scale=scale, size=size)
-            t = np.linspace(0, np.sum(rate), size)
+            t = np.linspace(0, np.sum(1 / rate), size)
         if any(rate < 0):
             print('Warning: Rate process includes negatives. Computing abs(rate).')
             rate = abs(rate)
@@ -338,6 +342,7 @@ class FPPProcess(Process):
         assert version in ['var_rate', 'cox', 'tick']
         if version == 'var_rate':
             rate, t = self.create_rate(Vrate, k_length=False)
+            t = np.linspace(0, np.sum(rate), int(1e5))
             int_thresholds = np.linspace(0, np.sum(rate), self.K)
             c_sum = np.cumsum(rate)
             ta = tools.find_nearest(c_sum, int_thresholds)
