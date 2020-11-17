@@ -302,12 +302,12 @@ def fpp_tw_psd(save=False):
 def fpp_tw_dist(data: bool = True, save=False):
     file = f'{data_path}fpp_tw_dist.npz'
     rate = ['n-random', 'n-random', 'n-random']
-    figs = ['exp', 'cox']
+    figs = ['pareto', 'cox', 'tick']
     gamma = [.001, .01, .1, 1., 10.]
     if not data:
         p = slf.FPPProcess()
         dt = 1e-2
-        N = int(1e7)
+        N = int(1e6)
         snr = .0
         fpps = [[], [], []]
         for i, (r, tw) in enumerate(zip(rate, figs)):
@@ -315,14 +315,14 @@ def fpp_tw_dist(data: bool = True, save=False):
                 p.set_params(gamma=g, K=int(N * g * dt), dt=dt,
                              tw=tw, snr=snr, rate=r)
                 s = p.get_tw()
-                print(len(s[1]))
+                # print(len(s[0]), len(s[1]))
                 fpps[i].append(s)
 
         fpp_e = fpps[0]
-        fpp_c = fpps[0]
-        fpp_t = fpps[1]
+        fpp_c = fpps[1]
+        fpp_t = fpps[2]
         del fpps
-        np.savez(file, fpp_e=fpp_e, fpp_c=fpp_c, fpp_t=fpp_t)
+        # np.savez(file, fpp_e=fpp_e, fpp_c=fpp_c, fpp_t=fpp_t)
     else:
         print(f'Loading data from {file}')
         f = np.load(file, allow_pickle=True)
@@ -347,9 +347,9 @@ def fpp_tw_dist(data: bool = True, save=False):
     tools.ridge_plot(fpp_e, xlabel='$ \\tau_\mathrm{w} $', plt_type='loglog',
                          ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[0])
     tools.ridge_plot(fpp_c, xlabel='$ \\tau_\mathrm{w} $', plt_type='loglog',
-                         ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[0])
-    tools.ridge_plot(fpp_t, xlabel='$ \\tau_\mathrm{w} $', plt_type='loglog',
                          ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[1])
+    tools.ridge_plot(fpp_t, xlabel='$ \\tau_\mathrm{w} $', plt_type='loglog',
+                         ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[2])
 
     if save:
         for f in figs:
@@ -359,6 +359,117 @@ def fpp_tw_dist(data: bool = True, save=False):
             plt.savefig(f'{save_path}fpp_tw_dist_{f}.pdf',
                         bbox_inches='tight', format='pdf', dpi=200)
             plt.savefig(f'{save_path}fpp_tw_dist_{f}.pgf', bbox_inches='tight', dpi=200)
+    else:
+        plt.show()
+
+
+def fpp_tw_cox(data=True, save=False):
+    file = f'{data_path}fpp_tw_cox.npz'
+    rate = 'n-random'
+    tw = 'pareto'
+    figs = ['fpp', 'sde']
+    gamma = 1.
+    dt = 1e-2
+    if not data:
+        p = slf.FPPProcess()
+        ps = slf.SDEProcess()
+        N = int(1e6)
+        snr = .0
+        fpp = []
+        sde = []
+        p.set_params(gamma=gamma, K=int(N * gamma * dt), dt=dt,
+                     tw=tw, snr=snr, rate=rate)
+        ps.set_params(gamma=gamma, K=int(N * gamma * dt), dt=dt)
+        s1, _, s2 = p.create_realisation(fit=False)
+        s = (s1, s2)
+        fpp.append(s)
+
+        s = ps.create_realisation(fit=False)
+        sde.append(s)
+
+        np.savez(file, fpp=fpp, sde=sde)
+    else:
+        print(f'Loading data from {file}')
+        f = np.load(file, allow_pickle=True)
+        fpp = f['fpp']
+        sde = f['sde']
+        del f
+
+    # # Create waiting times
+    # TW_c = []
+    # TW_t = []
+    # while len(fpp_c) > 0:
+    #     c = fpp_c.pop()
+    #     tw_c = p.get_tw(parameter=c)
+    #     TW_c.insert(0, tw_c)
+    #     t = fpp_t.pop()
+    #     tw_t = p.get_tw(parameter=t)
+    #     TW_t.insert(0, tw_t)
+
+    lab = [f'$\gamma = {gamma}$']
+    # tools.ridge_plot(fpp, xlabel='$ t $', ylabel='$ \Phi $', labels=lab, figname=figs)
+    tools.ridge_plot_psd(fpp, dt, xlabel='$ f $',
+                     ylabel='$ S $', labels=lab, figname=figs[0])
+    tools.ridge_plot_psd(sde, dt, xlabel='$ f $',
+                     ylabel='$ S $', labels=lab, figname=figs[1])
+
+    if save:
+        for f in figs:
+            print(f'Saving to {save_path}fpp_tw_cox_{f}.*')
+            plt.figure(f)
+            plt.tight_layout()
+            plt.savefig(f'{save_path}fpp_tw_cox_{f}.pdf',
+                        bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}fpp_tw_cox_{f}.pgf',
+                        bbox_inches='tight', dpi=200)
+    else:
+        plt.show()
+
+
+def sde_tw(data=True, save=False):
+    # file_grab = f'{data_path}fpp_sde.npz'
+    # gamma = [.1, 1., 10.]
+    # N = int(1e4)
+    file_grab = f'{data_path}fpp_sde_L.npz'
+    gamma = [.01, .1, 1.]
+    N = int(1e6)
+    file = f'{data_path}sde.npz'
+    figs = ['sde_tw']
+    if not data:
+        p = slf.SDEProcess()
+        dt = 1e-2
+        print(f'Loading data from {file}')
+        f = np.load(file_grab, allow_pickle=True)
+        sde = list(f['sde'])
+        del f
+
+        tw = []
+        print(gamma[::-1])
+        for g in gamma[::-1]:
+            p.set_params(gamma=g, K=int(N * g * dt), dt=dt)
+            # s1, s2 = sde.pop()
+            # s2[s2 < 1e-1] = 0
+            s = p.get_tw(sde.pop())
+            print(len(s[1]), p.K, p.gamma)
+            tw.insert(0, s)
+
+        # np.savez(file, tw=tw)
+    else:
+        f = np.load(file, allow_pickle=True)
+        tw = f['tw']
+        for TW in tw:
+            print(len(TW[1]))
+    lab = [f'$\gamma = {g}$' for g in gamma]
+    tools.ridge_plot(tw, xlabel='$ \\tau_\mathrm{w} $', ylabel='$ P_{\\tau_\mathrm{w}} $',
+                     labels=lab, figname=figs[0], plt_type='loglog')
+
+    if save:
+        for f in figs:
+            plt.figure(f)
+            plt.tight_layout()
+            plt.savefig(f'{save_path}{f}.pdf',
+                        bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}{f}.pgf', bbox_inches='tight')
     else:
         plt.show()
 
@@ -577,7 +688,9 @@ if __name__ == '__main__':
     # fpp_sde_psdpdf()
     # fpp_tw_real()
     # fpp_tw_psd()
-    fpp_tw_dist(data=False)
+    # fpp_tw_dist(data=False)
+    fpp_tw_cox(data=False)
+    # sde_tw()
     # fpptw_sde_real()
     # fpptw_sde_psd()
     # power_law_pulse()

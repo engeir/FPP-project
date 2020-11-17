@@ -247,6 +247,24 @@ class SDEProcess(Process):
 
         return t, x
 
+    def get_tw(self, parameter=None):
+        if parameter is None:
+            parameter = self.create_realisation(fit=False)
+        else:
+            if isinstance(parameter, np.ndarray) and not len(parameter) == 2:
+                raise TypeError(
+                    '"plot_tw" only works if both the time and forcing arrays are sent in')
+        t = parameter[0]
+        s = parameter[1]
+        pulse_shape = gsn.kern(t)
+        deconv, _ = dm.RL_gauss_deconvolve(s, pulse_shape, 500)
+        deconv = deconv.reshape((-1,))
+        ta, _ = dm.find_amp_ta_savgol(deconv, t, window_length=3)
+        # ta = t[f > 0]
+        trw = np.diff(ta)
+        tw = np.sort(trw)[::-1]
+        return tw, np.arange(len(tw))
+
     @staticmethod
     def plotter(*args, new_fig=True):
         assert len(args) == 2 or len(
@@ -499,9 +517,9 @@ class FPPProcess(Process):
             t, _, response, amp, ta = gsn.make_signal(self.gamma, self.K, self.dt,  # kernsize=2**17,
                                                       eps=self.snr, ampta=True, dynamic=True,
                                                       kerntype=self.kern_dict[self.kern], lam=.5,
-                                                      TWdist=self.tw, Adist=self.amp, TWkappa=.0)
+                                                      TWdist=self.tw, Adist=self.amp, TWkappa=.5)
         except Exception:
-            print('Using the self made ...')
+            print('exception ...')
             # amp, ta = self.create_forcing()
             amp, ta = self.create_ampta(self.tw, self.rate)
             t, response = gsn.signal_convolve(
