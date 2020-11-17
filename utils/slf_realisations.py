@@ -79,7 +79,7 @@ def fpp_sde_realisations(data=True, save=False):
         ps = slf.SDEProcess()
         N = int(1e4)
         dt = 1e-2
-        snr = .01
+        snr = .0
         fpp = []
         sde = []
         for g in gamma:
@@ -173,6 +173,7 @@ def fpp_sde_real_L(data=True, save=False):
 
 def fpp_sde_psdpdf(data=True, save=False):
     # file = f'{data_path}fpp_sde_psdpdf.npz'
+    # file = f'{data_path}fpp_sde.npz'
     file = f'{data_path}fpp_sde_L.npz'
     gamma = [.01, .1, 1.]
     figs = ['fpp_psd', 'sde_psd']
@@ -279,6 +280,7 @@ def fpp_tw_psd(save=False):
     # fpp_vr = f['fpp_vr']
     fpp_c = f['fpp_c']
     fpp_t = f['fpp_t']
+    del f
 
     lab = [f'$\gamma = {g}$' for g in gamma]
     # tools.ridge_plot_psd(fpp_vr, dt, xlabel='$ f $', ylabel='$ S $', labels=lab, figname=figs[0])
@@ -293,6 +295,70 @@ def fpp_tw_psd(save=False):
             plt.savefig(f'{save_path}{f}.pdf',
                         bbox_inches='tight', format='pdf', dpi=200)
             plt.savefig(f'{save_path}{f}.pgf', bbox_inches='tight', dpi=200)
+    else:
+        plt.show()
+
+
+def fpp_tw_dist(data: bool = True, save=False):
+    file = f'{data_path}fpp_tw_dist.npz'
+    rate = ['n-random', 'n-random', 'n-random']
+    figs = ['exp', 'cox']
+    gamma = [.001, .01, .1, 1., 10.]
+    if not data:
+        p = slf.FPPProcess()
+        dt = 1e-2
+        N = int(1e7)
+        snr = .0
+        fpps = [[], [], []]
+        for i, (r, tw) in enumerate(zip(rate, figs)):
+            for g in gamma:
+                p.set_params(gamma=g, K=int(N * g * dt), dt=dt,
+                             tw=tw, snr=snr, rate=r)
+                s = p.get_tw()
+                print(len(s[1]))
+                fpps[i].append(s)
+
+        fpp_e = fpps[0]
+        fpp_c = fpps[0]
+        fpp_t = fpps[1]
+        del fpps
+        np.savez(file, fpp_e=fpp_e, fpp_c=fpp_c, fpp_t=fpp_t)
+    else:
+        print(f'Loading data from {file}')
+        f = np.load(file, allow_pickle=True)
+        fpp_e = f['fpp_e']
+        fpp_c = f['fpp_c']
+        fpp_t = f['fpp_t']
+        del f
+
+    # # Create waiting times
+    # TW_c = []
+    # TW_t = []
+    # while len(fpp_c) > 0:
+    #     c = fpp_c.pop()
+    #     tw_c = p.get_tw(parameter=c)
+    #     TW_c.insert(0, tw_c)
+    #     t = fpp_t.pop()
+    #     tw_t = p.get_tw(parameter=t)
+    #     TW_t.insert(0, tw_t)
+
+    lab = [f'$\gamma = {g}$' for g in gamma]
+    # tools.ridge_plot_psd(fpp_vr, dt, xlabel='$ f $', ylabel='$ S $', labels=lab, figname=figs[0])
+    tools.ridge_plot(fpp_e, xlabel='$ \\tau_\mathrm{w} $', plt_type='loglog',
+                         ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[0])
+    tools.ridge_plot(fpp_c, xlabel='$ \\tau_\mathrm{w} $', plt_type='loglog',
+                         ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[0])
+    tools.ridge_plot(fpp_t, xlabel='$ \\tau_\mathrm{w} $', plt_type='loglog',
+                         ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[1])
+
+    if save:
+        for f in figs:
+            print(f'Saving to {save_path}fpp_tw_dist_{f}.*')
+            plt.figure(f)
+            plt.tight_layout()
+            plt.savefig(f'{save_path}fpp_tw_dist_{f}.pdf',
+                        bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}fpp_tw_dist_{f}.pgf', bbox_inches='tight', dpi=200)
     else:
         plt.show()
 
@@ -362,7 +428,7 @@ def fpptw_sde_psd(data=True, save=False):
     gamma = [.01, .1, 1.]
     figs = ['fpp_psd', 'sde_psd']
     dt = 1e-2
-    
+
     print(f'Loading data from {file}')
     f = np.load(file, allow_pickle=True)
     fpp = f['fpp']
@@ -426,46 +492,6 @@ def power_law_pulse(save=False):
         plt.show()
 
 
-def waiting_times(save=False):
-    """Different tw and gamma.
-
-    Observe:
-        tw=var_rate: large gamma give f^(-1/2)
-        tw=cluster: large gamma give... two Lorentzian?
-    """
-    p = slf.FPPProcess()
-    N = int(1e5)
-    dt = 1e-2
-    gamma = [.1]
-    TW = ['exp', 'var_rate', 'tick', 'cox']  # , 'gam', 'deg', 'unif'
-    figs = [f'gamma={g}' for g in gamma]
-    for j, g in enumerate(gamma):
-        for i, tw in enumerate(TW):
-            p.set_params(gamma=g, K=int(N * g * dt), dt=dt, tw=tw)
-            s = p.create_realisation(fit=False)
-
-            plt.figure(figs[j])
-            plt.subplot(2, 2, i + 1)
-            plt.title('$\\tau_{\mathrm{w}}=\mathrm{' + tw.replace('_', '\_') + '}$')
-            p.plot_realisation('plot_psd', parameter=s[-1], fs=dt, new_fig=False)
-            # tools.psd(s[-1], new_fig=False)
-
-            # plt.figure('pdf')
-            # plt.subplot(3, 2, i + 1)
-            # plt.title('$\\tau_{\mathrm{w}}=\mathrm{' + tw.replace('_', '\_') + '}$')
-            # tools.pdf(s[-1], new_fig=False)
-
-    if save:
-        for f in figs:
-            plt.figure(f)
-            plt.tight_layout()
-            plt.savefig(f'{save_path}tw_{f}.pdf',
-                        bbox_inches='tight', format='pdf', dpi=600)
-            plt.savefig(f'{save_path}tw_{f}.pgf', bbox_inches='tight')
-    else:
-        plt.show()
-
-
 def amplitude_dist(data=True, save=False):
     """Plot psd and pdf for different amp distributions.
 
@@ -485,15 +511,17 @@ def amplitude_dist(data=True, save=False):
     amps = []
     if not data:
         for i, a in enumerate(amp):
-            p.set_params(gamma=g, K=int(N * g * dt), dt=dt, amp=a)
+            p.set_params(gamma=g, K=int(N * g * dt), dt=dt, amp=a, snr=0.)
             s = p.create_realisation(fit=False)
+            sig = s[-1]
+            sig = (sig - sig.mean()) / sig.std()
             # p.plot_realisation('plot_real', parameter=s)
             if i < 3:
-                data1.append([s[0], s[-1]])
+                data1.append([s[0], sig])
             else:
-                data2.append([s[0], s[-1]])
+                data2.append([s[0], sig])
             # x, y = tools.est_pdf(s[-1])
-            y, _, x = sa.distribution(s[-1], 100)
+            y, _, x = sa.distribution(sig, 100)
             amps.append([x, y])
 
             # plt.figure(figs[0])
@@ -549,8 +577,8 @@ if __name__ == '__main__':
     # fpp_sde_psdpdf()
     # fpp_tw_real()
     # fpp_tw_psd()
-    fpptw_sde_real()
+    fpp_tw_dist(data=False)
+    # fpptw_sde_real()
     # fpptw_sde_psd()
     # power_law_pulse()
-    # waiting_times()
     # amplitude_dist()

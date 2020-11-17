@@ -326,15 +326,22 @@ def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=N
             ax_objs[-1].spines['right'].set_color((col1[0], col1[1], col1[2]))
             ax_objs[-1].yaxis.label.set_color((col1[0], col1[1], col1[2]))
             ax_objs[-1].tick_params(axis='y', which='both', colors=(col1[0], col1[1], col1[2]))
-        if ylabel:
-            plt.ylabel(ylabel)
+        # if ylabel:
+        #     plt.ylabel(ylabel)
         if i == len(data) - 1:
             if xlabel:
                 plt.xlabel(xlabel)
             plt.tick_params(axis='x', which='both', top=False)
+        elif i == 0:
+            plt.tick_params(axis='x', which='both',
+                            bottom=False, labelbottom=False)
         else:
             plt.tick_params(axis='x', which='both', bottom=False,
                             top=False, labelbottom=False)
+
+    if ylabel:
+        fig.text(0.01, 0.5, ylabel, ha='left',
+                 va='center', rotation='vertical')
 
     ax_objs[-1].legend(prop={'size': 6})
     if labels:
@@ -346,7 +353,7 @@ def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=N
     gs.update(hspace=0.)
 
 
-def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=None, y_scale=1.):
+def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=None, y_scale=1., **kwargs):
     """Plot data in a ridge plot with fixed width and fixed height per ridge.
 
     Args:
@@ -358,9 +365,16 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
         y_scale (float, optional): scale of y axis relative to the default. Defaults to 1.
 
     *args:
-        'slalomaxis': numbers on the y axis change between left and right to prevent cluttering
+        'slalomaxis': numbers on the y axis change between left and right to prevent overlap
         'x_lim_S': limit the x axis based on the smallest x ticks insted of the largest (default)
+
+    **kwargs:
+        plt_type (str, optional): plt class (loglog, plot, semilogx etc.) Defaults to plot.
     """
+    if 'plt_type' in kwargs.keys():
+        plt_type = kwargs['plt_type']
+    else:
+        plt_type = 'plot'
     fsize = (4, y_scale * len(data))
     gs = grid_spec.GridSpec(len(data), 1)
     if figname is not None:
@@ -373,9 +387,9 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
          'chartreuse', 'firebrick', 'yellow', 'royalblue']
     c = itertools.cycle(c)
     if 'x_lim_S' in args:
-        x_min, x_max = x_limit([d[0] for d in data], False)
+        x_min, x_max = x_limit([d[0] for d in data], plt_type, False)
     else:
-        x_min, x_max = x_limit([d[0] for d in data])
+        x_min, x_max = x_limit([d[0] for d in data], plt_type)
     for i, s in enumerate(data):
         col = next(c)
         ax_objs.append(fig.add_subplot(gs[i:i + 1, 0:]))
@@ -385,7 +399,8 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
             spines = ["top"]
         else:
             spines = ["top", "bottom"]
-        l = ax_objs[-1].plot(s[0], s[1], col)[0]
+        p_func = getattr(ax_objs[-1], plt_type)
+        l = p_func(s[0], s[1], col)[0]
         l2.append(l)
         ax_objs[-1].patch.set_alpha(0)
         plt.xlim([x_min, x_max])
@@ -399,15 +414,23 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
         ax_objs[-1].spines['right'].set_color(col)
         ax_objs[-1].yaxis.label.set_color(col)
         ax_objs[-1].tick_params(axis='y', which='both', colors=col)
-        if ylabel:
-            plt.ylabel(ylabel)
+        # if ylabel:
+        #     plt.ylabel(ylabel)
         if i == len(data) - 1:
             if xlabel:
                 plt.xlabel(xlabel)
             plt.tick_params(axis='x', which='both', top=False)
+        elif i == 0:
+            plt.tick_params(axis='x', which='both',
+                            bottom=False, labelbottom=False)
         else:
             plt.tick_params(axis='x', which='both', bottom=False,
                             top=False, labelbottom=False)
+
+    if ylabel:
+        # fig.add_subplot(111, frame_on=False)
+        # plt.ylabel(ylabel)
+        fig.text(0.01, 0.5, ylabel, ha='left', va='center', rotation='vertical')
 
     if labels:
         if len(labels) == len(data):
@@ -424,7 +447,7 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
     gs.update(hspace=0.)
 
 
-def x_limit(data, maxx=True):
+def x_limit(data, plt_type, maxx=True):
     x_min = np.inf if maxx else - np.inf
     x_max = - np.inf if maxx else np.inf
     for t in data:
@@ -436,6 +459,8 @@ def x_limit(data, maxx=True):
             x_min = t_min if t_min > x_min else x_min
             x_max = t_max if t_max < x_max else x_max
     diff = .05 * (x_max - x_min)
-    x_min -= diff
+    # x_min -= diff
     x_max += diff
+    if plt_type in ['loglog', 'semilogx']:
+        x_min = .8 * x_min if x_min < diff else x_min - diff
     return x_min, x_max
