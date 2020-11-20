@@ -268,7 +268,7 @@ def est_pdf(signal):
     return bin_centers, histogram
 
 
-def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=None):
+def ridge_plot_psd(data, fs, *args, xlabel=False, ylabel=False, labels=False, figname=None):
     """Plot data in a ridge plot with fixed width and fixed height per ridge.
 
     Args:
@@ -277,6 +277,9 @@ def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=N
         ylabel (bool or str, optional): y-label placed at all ridge y-axis, nothing if False. Defaults to False.
         labels (bool or list, optional): list of str with the labels of the ridges; must be the same length as `data`. Defaults to False.
         figname (None or str, optional): first arg in plt.figure(); useful for tracking figure-object. Defaults to None.
+
+    *args:
+        'squeeze': set spacing between subplots to -.5.
     """
     fsize = (4, 1.5 * len(data))
     gs = grid_spec.GridSpec(len(data), 1)
@@ -313,6 +316,15 @@ def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=N
         ax_objs[-1].loglog(fp[1:], lor, '--', color=(col[0], col[1], col[2]),
                            label='Lorentz spectrum', alpha=.8)
         # === Do actual plotting
+        if 'squeeze' in args:
+            if i % 2:
+                ax_objs[-1].tick_params(axis='y', which='both', left=False,
+                                        labelleft=False, labelright=True)
+                ax_objs[-1].spines['left'].set_color('k')
+            else:
+                ax_objs[-1].tick_params(axis='y', which='both', right=False,
+                                        labelleft=True, labelright=False)
+                ax_objs[-1].spines['right'].set_color('k')
         if i == 0:
             spines = ["bottom"]
         elif i == len(data) - 1:
@@ -322,10 +334,13 @@ def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=N
         ax_objs[-1].patch.set_alpha(0)
         for sp in spines:
             ax_objs[-1].spines[sp].set_visible(False)
-            ax_objs[-1].spines['left'].set_color((col1[0], col1[1], col1[2]))
-            ax_objs[-1].spines['right'].set_color((col1[0], col1[1], col1[2]))
+            # ax_objs[-1].spines['left'].set_color((col1[0], col1[1], col1[2]))
+            # ax_objs[-1].spines['right'].set_color((col1[0], col1[1], col1[2]))
             ax_objs[-1].yaxis.label.set_color((col1[0], col1[1], col1[2]))
             ax_objs[-1].tick_params(axis='y', which='both', colors=(col1[0], col1[1], col1[2]))
+        if not 'squeeze' in args:
+            ax_objs[-1].spines['left'].set_color((col1[0], col1[1], col1[2]))
+            ax_objs[-1].spines['right'].set_color((col1[0], col1[1], col1[2]))
         # if ylabel:
         #     plt.ylabel(ylabel)
         if i == len(data) - 1:
@@ -350,14 +365,17 @@ def ridge_plot_psd(data, fs, xlabel=False, ylabel=False, labels=False, figname=N
                     bbox_transform=ax_objs[0].transAxes, ncol=len(data))
         else:
             print('Length of labels and data was not equal.')
-    gs.update(hspace=0.)
+    if 'squeeze' in args:
+        gs.update(hspace=-0.4)
+    else:
+        gs.update(hspace=0.)
 
 
 def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=None, y_scale=1., **kwargs):
     """Plot data in a ridge plot with fixed width and fixed height per ridge.
 
     Args:
-        data (list): a list of n tuples/lists of length 2: (x, y)-pairs
+        data (list): a list of n tuples/lists of length 2: (x, y)-pairs; list of n np.ndarrays: (y)
         xlabel (bool or str, optional): x-label placed at the bottom, nothing if False. Defaults to False.
         ylabel (bool or str, optional): y-label placed at all ridge y-axis, nothing if False. Defaults to False.
         labels (bool or list, optional): list of str with the labels of the ridges; must be the same length as `data`. Defaults to False.
@@ -367,9 +385,12 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
     *args:
         'slalomaxis': numbers on the y axis change between left and right to prevent overlap
         'x_lim_S': limit the x axis based on the smallest x ticks insted of the largest (default)
+        'grid': turn on grid
+        'squeeze': set spacing between subplots to -.5. This turns ON 'slalomaxis' and OFF 'grid'.
 
     **kwargs:
         plt_type (str, optional): plt class (loglog, plot, semilogx etc.) Defaults to plot.
+        xlim (list or tuple, optional): min and max value along x axis (len: 2)
     """
     if 'plt_type' in kwargs.keys():
         plt_type = kwargs['plt_type']
@@ -386,10 +407,24 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
     c = ['r', 'g', 'b', 'magenta', 'darkorange',
          'chartreuse', 'firebrick', 'yellow', 'royalblue']
     c = itertools.cycle(c)
-    if 'x_lim_S' in args:
+    if 'xlim' in kwargs.keys():
+        x_min, x_max = kwargs['xlim']
+    # TODO: only given T_max and dt (optional), calculate time / x axis
+    # elif len([a for a in args if not isinstance(args, str)]) > 0:
+    #     if len([a for a in args if not isinstance(args, str)]) == 1:
+    #         T = [a for a in args if not isinstance(args, str)][0]
+    #         dt = 1
+    #     elif len([a for a in args if not isinstance(args, str)]) == 2:
+    #         T = [a for a in args if not isinstance(args, str)][0]
+    #         dt = [a for a in args if not isinstance(args, str)][1]
+    elif len(data[0]) != 2:
+        x_min, x_max = 0, len(data[0])
+    elif 'x_lim_S' in args:
         x_min, x_max = x_limit([d[0] for d in data], plt_type, False)
     else:
         x_min, x_max = x_limit([d[0] for d in data], plt_type)
+
+    # Loop through data
     for i, s in enumerate(data):
         col = next(c)
         ax_objs.append(fig.add_subplot(gs[i:i + 1, 0:]))
@@ -399,30 +434,46 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
             spines = ["top"]
         else:
             spines = ["top", "bottom"]
+
+        # Plot data
         p_func = getattr(ax_objs[-1], plt_type)
-        l = p_func(s[0], s[1], col)[0]
+        if len(s) == 2:
+            l = p_func(s[0], s[1], color=col)[0]
+        else:
+            l = p_func(s, color=col)[0]
+
         l2.append(l)
         ax_objs[-1].patch.set_alpha(0)
         plt.xlim([x_min, x_max])
-        if 'slalomaxis' in args:
+        if 'squeeze' in args:
+            if i % 2:
+                ax_objs[-1].tick_params(axis='y', which='both', left=False,
+                                        labelleft=False, labelright=True)
+                ax_objs[-1].spines['left'].set_color('k')
+            else:
+                ax_objs[-1].tick_params(axis='y', which='both', right=False,
+                                        labelleft=True, labelright=False)
+                ax_objs[-1].spines['right'].set_color('k')
+        elif 'slalomaxis' in args:
             if i % 2:
                 ax_objs[-1].tick_params(axis='y', which='both',
                                 labelleft=False, labelright=True)
         for sp in spines:
             ax_objs[-1].spines[sp].set_visible(False)
-        ax_objs[-1].spines['left'].set_color(col)
-        ax_objs[-1].spines['right'].set_color(col)
-        ax_objs[-1].yaxis.label.set_color(col)
+        if not 'squeeze' in args:
+            ax_objs[-1].spines['left'].set_color(col)
+            ax_objs[-1].spines['right'].set_color(col)
         ax_objs[-1].tick_params(axis='y', which='both', colors=col)
-        # if ylabel:
-        #     plt.ylabel(ylabel)
+        ax_objs[-1].yaxis.label.set_color(col)
+        if 'grid' in args and not 'squeeze' in args:
+            plt.grid(True, which="both", ls="-", alpha=0.2)
         if i == len(data) - 1:
             if xlabel:
                 plt.xlabel(xlabel)
             plt.tick_params(axis='x', which='both', top=False)
         elif i == 0:
             plt.tick_params(axis='x', which='both',
-                            bottom=False, labelbottom=False)
+                            bottom=False, labelbottom=False)  # , labeltop=True
         else:
             plt.tick_params(axis='x', which='both', bottom=False,
                             top=False, labelbottom=False)
@@ -444,23 +495,32 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
                     bbox_transform=ax_objs[0].transAxes, ncol=n_col)
         else:
             print('Length of labels and data was not equal.')
-    gs.update(hspace=0.)
+    if 'squeeze' in args:
+        gs.update(hspace=-0.5)
+    else:
+        gs.update(hspace=0.)
 
 
 def x_limit(data, plt_type, maxx=True):
-    x_min = np.inf if maxx else - np.inf
-    x_max = - np.inf if maxx else np.inf
-    for t in data:
-        t_min, t_max = np.min(t), np.max(t)
+    t_min = data[0]
+    x_max = data[0][-1]
+    for t in data[1:]:
+        t_0, t_max = np.min(t), np.max(t)
         if maxx:
-            x_min = t_min if t_min < x_min else x_min
+            t_min = t if t_0 < t_min[0] else t_min
+            # t_max = t if t_1 > t_max[-1] else t_max
             x_max = t_max if t_max > x_max else x_max
         else:
-            x_min = t_min if t_min > x_min else x_min
+            t_min = t if t[0] > t_min[0] else t_min
+            # t_max = t if t[-1] < t_max[-1] else t_max
             x_max = t_max if t_max < x_max else x_max
-    diff = .05 * (x_max - x_min)
-    # x_min -= diff
+    diff = .05 * (x_max - t_min[0])
+    # x_max = t_max[-1] + diff
     x_max += diff
     if plt_type in ['loglog', 'semilogx']:
-        x_min = .8 * x_min if x_min < diff else x_min - diff
+        x_min = .8 * t_min[t_min > 0][0] if t_min[0] < diff else t_min[0] - diff
+        # if x_min < 0:
+        #     x_min = 1e-10
+    else:
+        x_min = t_min[0] - diff
     return x_min, x_max
