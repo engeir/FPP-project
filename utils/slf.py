@@ -240,7 +240,7 @@ class SDEProcess(Process):
         x = rksde.SDE_SLE(self.dt, int(self.T / self.dt),
                           x0=self.gamma, gamma=self.gamma, log=True)
         # x = (x - x.mean()) / x.std()
-        t = np.arange(self.T / self.dt) * self.dt
+        t = np.linspace(0, self.T, int(self.T / self.dt))
         if fit:
             amp, ta, pulse, forcing, error = self.fit_force(t, x)
             return t, ta, amp, pulse, forcing, error, x
@@ -256,14 +256,15 @@ class SDEProcess(Process):
                     '"plot_tw" only works if both the time and forcing arrays are sent in')
         t = parameter[0]
         s = parameter[1]
-        pulse_shape = gsn.kern(t)
-        deconv, _ = dm.RL_gauss_deconvolve(s, pulse_shape, 500)
-        deconv = deconv.reshape((-1,))
-        ta, _ = dm.find_amp_ta_savgol(deconv, t, window_length=3)
+        pulse_shape = gsn.kern(t - t.mean())
+        deconv, _ = dm.RL_gauss_deconvolve(s, pulse_shape, 100)
+        f = deconv.reshape((-1,))
+        ta, amp = dm.find_amp_ta_savgol(f, t, window_length=11)
         # ta = t[f > 0]
-        trw = np.diff(ta)
-        tw = np.sort(trw)[::-1]
-        return tw, np.arange(len(tw))
+        # ta = ta[amp > 1e-10]
+        # tw = np.diff(ta)
+        # tw = np.sort(trw)[::-1]
+        return t, s, ta, amp, f
 
     @staticmethod
     def plotter(*args, new_fig=True):
@@ -348,8 +349,8 @@ class FPPProcess(Process):
             size = self.K if k_length else int(1e5)
             # Return rate as a waiting time if True, else as a varying gamma.
             scale = 1 / self.gamma if tw else self.gamma
-            rate = prob.gamma(shape=1., scale=scale, size=size)
-            # rate = prob.exponential(scale=scale, size=size)
+            # rate = prob.gamma(shape=1., scale=scale, size=size)
+            rate = prob.exponential(scale=scale, size=size)
             t = np.linspace(0, np.sum(1 / rate), size)
         if any(rate < 0):
             print('Warning: Rate process includes negatives. Computing abs(rate).')
@@ -509,7 +510,7 @@ class FPPProcess(Process):
         response_fit = fftconvolve(forcing, pulse_fit, mode='same')
         return pulse, pulse_fit, response_fit, error
 
-    def create_realisation(self, fit=True):
+    def create_realisation(self, fit=True, ampta=False, full=False):
         # Beware that seeds may yield strange results!
         # Equal seeds give correlated amplitude and waiting times.
         # prev. good seeds: (20, 31)
@@ -519,7 +520,6 @@ class FPPProcess(Process):
                                                       kerntype=self.kern_dict[self.kern], lam=.5,
                                                       TWdist=self.tw, Adist=self.amp, TWkappa=.5)
         except Exception:
-            print('exception ...')
             # amp, ta = self.create_forcing()
             amp, ta = self.create_ampta(self.tw, self.rate)
             t, response = gsn.signal_convolve(
@@ -527,24 +527,32 @@ class FPPProcess(Process):
 
         ta_index = np.ceil(ta / self.dt).astype(int)
         forcing = np.zeros(t.size)
-        for i in range(ta_index.size):
-            forcing[ta_index[i]] += amp[i]
+        # for i in range(ta_index.size):
+        #     forcing[ta_index[i]] += amp[i]
+        forcing[ta_index] = amp
 
         if fit:
             fitted = self.fit_pulse(t, forcing, response)
             return t, forcing, fitted[0], fitted[1], fitted[2], fitted[3], response
+        if full:
+            return t, forcing, response, amp, ta
+        if ampta:
+            return amp, ta
         return t, forcing, response
 
     def get_tw(self, parameter=None):
         if parameter is None:
-            parameter = self.create_realisation(fit=False)
+            make = False
+            amp, ta = self.create_realisation(fit=False, ampta=True)
         else:
+            make = True
             if isinstance(parameter, np.ndarray) and not len(parameter) == 2:
                 raise TypeError(
                     '"plot_tw" only works if both the time and forcing arrays are sent in')
-        t = parameter[0]
-        f = parameter[1]
-        ta = t[f > 0]
+        if make:
+            t = parameter[0]
+            f = parameter[1]
+            ta = t[f > 0]
         trw = np.diff(ta)
         tw = np.sort(trw)[::-1]
         return tw, np.arange(len(tw))
