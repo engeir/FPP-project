@@ -1,4 +1,5 @@
 import sys
+sys.path.append('/Users/eirikenger/uit_scripts')
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,7 +9,6 @@ import slf
 import tools
 import plot_utils as pu
 
-sys.path.append('/home/een023/uit_scripts')
 import uit_scripts.stat_analysis as sa
 from uit_scripts.plotting import figure_defs as fd
 
@@ -16,7 +16,8 @@ fd.set_rcparams_article_thickline(plt.rcParams)
 plt.rcParams['font.family'] = 'DejaVu Sans'
 
 data_path = '/home/een023/Documents/FPP_SOC_Chaos/report/data/'
-save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
+# save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
+save_path = ''
 
 
 # Figure 1
@@ -289,9 +290,9 @@ def sde_tw(data=True, save=False):
     # N = int(1e4)
     # file_grab = f'{data_path}fpp_sde_L.npz'
     gamma = [.01, .1, 1., 10.]
-    N = int(1e6)
+    N = int(1e7)
     dt = 1e-2
-    file = f'{data_path}sde.npz'
+    file = 'sde.npz'
     # file = f'{data_path}sde_w11.npz'
     figs = ['sde', 'tw', 'amp', 'corr']
     if not data:
@@ -326,7 +327,8 @@ def sde_tw(data=True, save=False):
         sde = f['sde']
         ta = f['ta']
         amp = f['amp']
-        # force = f['f']
+        force = f['f']
+
     # F = []
     # for ff in force:
     #     F.append((np.linspace(0, N * dt, len(ff)), ff))
@@ -347,15 +349,16 @@ def sde_tw(data=True, save=False):
             plt.plot(np.diff(s[mask]))
             plt.show()
 
-        a = (a - a.mean()) / a.std()
+        a = (a - 0) / a.std()
         # s = np.diff(s[a > 1e-10])
         s = np.diff(s)
-        s = (s - s.mean()) / s.std()
-        corr.append((np.linspace(-1, 1, len(s)),
-                     np.correlate(s, s, 'same') / np.correlate(s, s)))
-        y, _, x = sa.distribution(a, 30)
+        co = (s - s.mean()) / s.std()
+        s = (s - 0) / s.std()
+        corr.append((np.linspace(-1, 1, len(co)),
+                     np.correlate(co, co, 'same') / np.correlate(co, co)))
+        y, _, x = sa.distribution(a, 100)
         AMP.append((x, y))
-        y, _, x = sa.distribution(s, 30)
+        y, _, x = sa.distribution(s, 100)
         TW.append((x, y))
     tw = TW
     amp = AMP
@@ -371,23 +374,24 @@ def sde_tw(data=True, save=False):
     # # plt.figure()
     # # plt.plot(sde[1][0], sde[1][1])
     plt.rcParams['lines.linewidth'] = .4
-    # tools.ridge_plot(sde, 'grid', xlabel='$ t $', ylabel='$ \Phi $',
-    #                  labels=lab, figname=figs[0], plt_type='plot')  # , xlim=[0, 200])
+    tools.ridge_plot(sde, 'grid', xlabel='$ t $', ylabel='$ \Phi $',
+                     labels=lab, figname=figs[0], plt_type='plot')  # , xlim=[0, 200])
     plt.rcParams['lines.linewidth'] = 1.5
-    tools.ridge_plot(tw, 'grid', 'squeeze', xlabel='$ t_k $', ylabel='$ P_{t_k} $',
-                     labels=lab, figname=figs[1], plt_type='semilogy')  # , xlim=[0, 200])
-    tools.ridge_plot(amp, 'grid', xlabel='$ A_k $', ylabel='$ P_{A_k} $',
-                     labels=lab, figname=figs[2], plt_type='semilogy')  # , xlim=[0, 200])
-    tools.ridge_plot(corr, 'grid', xlabel='Lag', ylabel='Correlation',
+    tools.ridge_plot(tw, 'grid', 'squeeze', 'dots', xlabel='$ t_k $', ylabel='$ P_{t_k} $',
+                     labels=lab, figname=figs[1], plt_type='loglog')  # , xlim=[0, 200])
+    tools.ridge_plot(amp, 'grid', 'squeeze', 'dots', xlabel='$ A_k $', ylabel='$ P_{A_k} $',
+                     labels=lab, figname=figs[2], plt_type='loglog')  # , xlim=[0, 200])
+    tools.ridge_plot(corr, 'slalomaxis', xlabel='Lag', ylabel='Correlation',
                      labels=lab, figname=figs[3], plt_type='plot')  # , xlim=[0, 200])
 
     if save:
         for f in figs:
+            print(f'Saving to {save_path}{f}.*')
             plt.figure(f)
             plt.tight_layout()
             plt.savefig(f'{save_path}sde_anlz_{f}.pdf',
                         bbox_inches='tight', format='pdf', dpi=200)
-            plt.savefig(f'{save_path}sde_anlz_{f}.pgf', bbox_inches='tight')
+            # plt.savefig(f'{save_path}sde_anlz_{f}.pgf', bbox_inches='tight')
     else:
         plt.show()
 
@@ -480,7 +484,7 @@ if __name__ == '__main__':
     # fpp_sde_realisations()  # 3
     # fpp_sde_real_L()  # 4
     # fpp_sde_psdpdf()  # 5
-    sde_tw()  # 6
+    sde_tw(save=True)  # 6
     # fpp_tw_real()  # 7
     # fpp_tw_psd()  # 8
     # fpp_tw_dist(data=False)
