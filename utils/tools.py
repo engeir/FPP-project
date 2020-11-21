@@ -383,6 +383,7 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
         y_scale (float, optional): scale of y axis relative to the default. Defaults to 1.
 
     *args:
+        'dots': add the 'o' str to the plt.<plt_type>
         'slalomaxis': numbers on the y axis change between left and right to prevent overlap
         'x_lim_S': limit the x axis based on the smallest x ticks insted of the largest (default)
         'grid': turn on grid
@@ -404,6 +405,8 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
         fig = plt.figure(figsize=fsize)
     ax_objs = []
     l2 = []
+    ls = ['-', '--']
+    ls = itertools.cycle(ls)
     c = ['r', 'g', 'b', 'magenta', 'darkorange',
          'chartreuse', 'firebrick', 'yellow', 'royalblue']
     c = itertools.cycle(c)
@@ -427,6 +430,7 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
     # Loop through data
     for i, s in enumerate(data):
         col = next(c)
+        lnst = next(ls)
         ax_objs.append(fig.add_subplot(gs[i:i + 1, 0:]))
         if i == 0:
             spines = ["bottom"]
@@ -437,10 +441,11 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
 
         # Plot data
         p_func = getattr(ax_objs[-1], plt_type)
+        line_type = '-o' if 'dots' in args else '-'
         if len(s) == 2:
-            l = p_func(s[0], s[1], color=col)[0]
+            l = p_func(s[0], s[1], line_type, color=col, markersize=1.5)[0]
         else:
-            l = p_func(s, color=col)[0]
+            l = p_func(s, line_type, color=col, markersize=1.5)[0]
 
         l2.append(l)
         ax_objs[-1].patch.set_alpha(0)
@@ -460,13 +465,17 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
                                 labelleft=False, labelright=True)
         for sp in spines:
             ax_objs[-1].spines[sp].set_visible(False)
-        if not 'squeeze' in args:
+        if 'squeeze' not in args:
             ax_objs[-1].spines['left'].set_color(col)
             ax_objs[-1].spines['right'].set_color(col)
         ax_objs[-1].tick_params(axis='y', which='both', colors=col)
         ax_objs[-1].yaxis.label.set_color(col)
-        if 'grid' in args and not 'squeeze' in args:
-            plt.grid(True, which="both", ls="-", alpha=0.2)
+        if 'grid' in args and 'squeeze' not in args:
+            plt.grid(True, which="major", ls="-", alpha=0.2)
+        if 'grid' in args and 'squeeze' in args:
+            plt.minorticks_off()
+            plt.grid(True, axis='y', which="major", ls=lnst, alpha=0.2)
+            plt.grid(True, axis='x', which="major", ls='-', alpha=0.2)
         if i == len(data) - 1:
             if xlabel:
                 plt.xlabel(xlabel)
