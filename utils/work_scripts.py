@@ -16,8 +16,8 @@ fd.set_rcparams_article_thickline(plt.rcParams)
 plt.rcParams['font.family'] = 'DejaVu Sans'
 
 data_path = '/home/een023/Documents/FPP_SOC_Chaos/report/data/'
-# save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
-save_path = ''
+save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
+# save_path = ''
 
 
 # Figure 1
@@ -292,9 +292,10 @@ def sde_tw(data=True, save=False):
     gamma = [.01, .1, 1., 10.]
     N = int(1e7)
     dt = 1e-2
-    file = 'sde.npz'
+    # file = 'sde.npz'
+    file = f'{data_path}sde_L.npz'
     # file = f'{data_path}sde_w11.npz'
-    figs = ['sde', 'tw', 'amp', 'corr']
+    figs = ['sde', 'tw_semilogy', 'amp', 'corr']
     if not data:
         p = slf.SDEProcess()
         # print(f'Loading data from {file}')
@@ -324,10 +325,10 @@ def sde_tw(data=True, save=False):
     else:
         print(f'Loading data from {file}')
         f = np.load(file, allow_pickle=True)
-        sde = f['sde']
+        # sde = f['sde']
         ta = f['ta']
         amp = f['amp']
-        force = f['f']
+        # force = f['f']
 
     # F = []
     # for ff in force:
@@ -356,9 +357,9 @@ def sde_tw(data=True, save=False):
         s = (s - 0) / s.std()
         corr.append((np.linspace(-1, 1, len(co)),
                      np.correlate(co, co, 'same') / np.correlate(co, co)))
-        y, _, x = sa.distribution(a, 100)
+        y, _, x = sa.distribution(a, 70)
         AMP.append((x, y))
-        y, _, x = sa.distribution(s, 100)
+        y, _, x = sa.distribution(s, 71)
         TW.append((x, y))
     tw = TW
     amp = AMP
@@ -374,19 +375,19 @@ def sde_tw(data=True, save=False):
     # # plt.figure()
     # # plt.plot(sde[1][0], sde[1][1])
     plt.rcParams['lines.linewidth'] = .4
-    tools.ridge_plot(sde, 'grid', xlabel='$ t $', ylabel='$ \Phi $',
-                     labels=lab, figname=figs[0], plt_type='plot')  # , xlim=[0, 200])
+    # tools.ridge_plot(sde, 'grid', xlabel='$ t $', ylabel='$ \Phi $',
+    #                  labels=lab, figname=figs[0], plt_type='plot')  # , xlim=[0, 200])
     plt.rcParams['lines.linewidth'] = 1.5
     tools.ridge_plot(tw, 'grid', 'squeeze', 'dots', xlabel='$ t_k $', ylabel='$ P_{t_k} $',
-                     labels=lab, figname=figs[1], plt_type='loglog')  # , xlim=[0, 200])
-    tools.ridge_plot(amp, 'grid', 'squeeze', 'dots', xlabel='$ A_k $', ylabel='$ P_{A_k} $',
-                     labels=lab, figname=figs[2], plt_type='loglog')  # , xlim=[0, 200])
+                     labels=lab, figname=figs[1], plt_type='semilogy', y_scale=1.13)  # , xlim=[0, 200])
+    # tools.ridge_plot(amp, 'grid', 'squeeze', 'dots', xlabel='$ A_k $', ylabel='$ P_{A_k} $',
+    #                  labels=lab, figname=figs[2], plt_type='loglog')  # , xlim=[0, 200])
     tools.ridge_plot(corr, 'slalomaxis', xlabel='Lag', ylabel='Correlation',
-                     labels=lab, figname=figs[3], plt_type='plot')  # , xlim=[0, 200])
+                     labels=lab, figname=figs[3], plt_type='semilogy', xlim=[-.3, .3], ylim=[1e-3, 2e0])
 
     if save:
-        for f in figs:
-            print(f'Saving to {save_path}{f}.*')
+        for f in [figs[1], figs[-1]]:
+            print(f'Saving to {save_path}sde_anlz_{f}.*')
             plt.figure(f)
             plt.tight_layout()
             plt.savefig(f'{save_path}sde_anlz_{f}.pdf',
@@ -484,7 +485,7 @@ if __name__ == '__main__':
     # fpp_sde_realisations()  # 3
     # fpp_sde_real_L()  # 4
     # fpp_sde_psdpdf()  # 5
-    sde_tw(save=True)  # 6
+    sde_tw()  # 6
     # fpp_tw_real()  # 7
     # fpp_tw_psd()  # 8
     # fpp_tw_dist(data=False)
