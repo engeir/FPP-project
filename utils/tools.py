@@ -332,8 +332,9 @@ def ridge_plot_psd(data, fs, *args, xlabel=False, ylabel=False, labels=False, fi
         else:
             spines = ["top", "bottom"]
         ax_objs[-1].patch.set_alpha(0)
-        for sp in spines:
-            ax_objs[-1].spines[sp].set_visible(False)
+        if len(data) != 1:
+            for sp in spines:
+                ax_objs[-1].spines[sp].set_visible(False)
             # ax_objs[-1].spines['left'].set_color((col1[0], col1[1], col1[2]))
             # ax_objs[-1].spines['right'].set_color((col1[0], col1[1], col1[2]))
             ax_objs[-1].yaxis.label.set_color((col1[0], col1[1], col1[2]))
@@ -392,6 +393,7 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
     **kwargs:
         plt_type (str, optional): plt class (loglog, plot, semilogx etc.) Defaults to plot.
         xlim (list or tuple, optional): min and max value along x axis (len: 2)
+        ylim (list or tuple, optional): min and max value along y axis (len: 2)
     """
     if 'plt_type' in kwargs.keys():
         plt_type = kwargs['plt_type']
@@ -447,39 +449,48 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
         else:
             l = p_func(s, line_type, color=col, markersize=1.5)[0]
 
+        # Append in line-list to create legend
         l2.append(l)
         ax_objs[-1].patch.set_alpha(0)
+        # Scale all subplots to the same x axis
         plt.xlim([x_min, x_max])
-        if 'squeeze' in args:
-            if i % 2:
-                ax_objs[-1].tick_params(axis='y', which='both', left=False,
-                                        labelleft=False, labelright=True)
-                ax_objs[-1].spines['left'].set_color('k')
-            else:
-                ax_objs[-1].tick_params(axis='y', which='both', right=False,
-                                        labelleft=True, labelright=False)
-                ax_objs[-1].spines['right'].set_color('k')
-        elif 'slalomaxis' in args:
-            if i % 2:
-                ax_objs[-1].tick_params(axis='y', which='both',
-                                labelleft=False, labelright=True)
-        for sp in spines:
-            ax_objs[-1].spines[sp].set_visible(False)
-        if 'squeeze' not in args:
-            ax_objs[-1].spines['left'].set_color(col)
-            ax_objs[-1].spines['right'].set_color(col)
-        ax_objs[-1].tick_params(axis='y', which='both', colors=col)
-        ax_objs[-1].yaxis.label.set_color(col)
-        if 'grid' in args and 'squeeze' not in args:
+        if 'ylim' in kwargs.keys():
+            plt.ylim(kwargs['ylim'])
+
+        # The length of data is greater than one, fix the plot according to the input args and kwargs.
+        if len(data) != 1:
+            if 'squeeze' in args:
+                if i % 2:
+                    ax_objs[-1].tick_params(axis='y', which='both', left=False,
+                                            labelleft=False, labelright=True)
+                    ax_objs[-1].spines['left'].set_color('k')
+                else:
+                    ax_objs[-1].tick_params(axis='y', which='both', right=False,
+                                            labelleft=True, labelright=False)
+                    ax_objs[-1].spines['right'].set_color('k')
+            elif 'slalomaxis' in args:
+                if i % 2:
+                    ax_objs[-1].tick_params(axis='y', which='both',
+                                    labelleft=False, labelright=True)
+            for sp in spines:
+                ax_objs[-1].spines[sp].set_visible(False)
+            if 'squeeze' not in args:
+                ax_objs[-1].spines['left'].set_color(col)
+                ax_objs[-1].spines['right'].set_color(col)
+            ax_objs[-1].tick_params(axis='y', which='both', colors=col)
+            ax_objs[-1].yaxis.label.set_color(col)
+        if ('grid' in args and 'squeeze' not in args) or ('grid' in args and len(data) == 1):
             plt.grid(True, which="major", ls="-", alpha=0.2)
-        if 'grid' in args and 'squeeze' in args:
+        elif 'grid' in args and 'squeeze' in args:
             plt.minorticks_off()
+            alpha = .2 if (i == 0 or i == len(data) - 1) else .1
             plt.grid(True, axis='y', which="major", ls=lnst, alpha=0.2)
-            plt.grid(True, axis='x', which="major", ls='-', alpha=0.2)
+            plt.grid(True, axis='x', which="major", ls='-', alpha=alpha)
         if i == len(data) - 1:
             if xlabel:
                 plt.xlabel(xlabel)
-            plt.tick_params(axis='x', which='both', top=False)
+            if len(data) != 1:
+                plt.tick_params(axis='x', which='both', top=False)
         elif i == 0:
             plt.tick_params(axis='x', which='both',
                             bottom=False, labelbottom=False)  # , labeltop=True

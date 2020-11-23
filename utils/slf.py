@@ -316,6 +316,7 @@ class FPPProcess(Process):
         self.kern = '1exp'
         self.rate = 'n-random'
         self.tw = 'exp'
+        self.TWkappa = .5
         self.amp = 'exp'
 
     def create_rate(self, version, k_length=True, tw=False):
@@ -518,7 +519,7 @@ class FPPProcess(Process):
             t, _, response, amp, ta = gsn.make_signal(self.gamma, self.K, self.dt,  # kernsize=2**17,
                                                       eps=self.snr, ampta=True, dynamic=True,
                                                       kerntype=self.kern_dict[self.kern], lam=.5,
-                                                      TWdist=self.tw, Adist=self.amp, TWkappa=.5)
+                                                      TWdist=self.tw, Adist=self.amp, TWkappa=self.TWkappa)
         except Exception:
             # amp, ta = self.create_forcing()
             amp, ta = self.create_ampta(self.tw, self.rate)
