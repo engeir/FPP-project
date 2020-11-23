@@ -314,9 +314,77 @@ def power_law_pulse(save=False):
         plt.show()
 
 
+def test_FPP(data=False, save=False):
+    file = f'{data_path}test_fpp.npz'
+    rate = 'n-random'
+    tw_ = 'pareto'
+    figs = ['fpp_1']
+    gamma = [.1]
+    dt = 1e-2
+    if not data:
+        p = slf.FPPProcess()
+        N = int(5e6)  # 2e6 in saved arr
+        snr = .0
+        sig = []
+        force = []
+        amp = []
+        tw = []
+        for g in gamma:
+            p.set_params(gamma=g, K=int(N * g * dt), dt=dt, TWkappa=.5,
+                         tw=tw_, snr=snr, rate=rate, amp='pareto', kern='1exp')
+
+            t, f, r, a, ta = p.create_realisation(fit=False, full=True)
+            s = (t, r)
+            trw = np.diff(ta)
+            TW = np.sort(trw)[::-1]
+            sig.append(s)
+            force.append(f)
+            amp.append(a)
+            tw.append(TW)
+
+        # np.savez(file, sig=sig, force=force, amp=amp, tw=tw)
+    else:
+        print(f'Loading data from {file}')
+        f = np.load(file, allow_pickle=True)
+        sig = f['sig']
+        # force = f['force']
+        # amp = f['amp']
+        # tw = list(f['tw'])
+        del f
+
+    # # Create histogram of waiting times
+    # for _ in range(len(tw)):
+    #     c = tw.pop()
+    #     c /= c.mean()
+    #     y, _, x = sa.distribution(c, 100)
+    #     tw.insert(0, (x, y))
+
+    lab = [f'$\gamma = {g}$' for g in gamma]
+    # tools.ridge_plot(sig, xlabel='$ t $', ylabel='$ \Phi $',
+    #                  labels=lab, figname='sig')
+    # tools.ridge_plot(tw, xlabel='$ t $', ylabel='$ \Phi $', labels=lab, figname='tw', plt_type='semilogy')
+    tools.ridge_plot_psd(sig, dt, 'squeeze', xlabel='$ f $',
+                         ylabel='$ S $', labels=lab, figname=figs[0])
+    # tools.ridge_plot_psd(, dt, xlabel='$ f $',
+    #                  ylabel='$ S $', labels=lab, figname=figs[1])
+
+    if save:
+        for f in figs:
+            print(f'Saving to {save_path}test_FPP_{f}.*')
+            plt.figure(f)
+            plt.tight_layout()
+            plt.savefig(f'{save_path}test_FPP_{f}.pdf',
+                        bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}test_FPP_{f}.pgf',
+                        bbox_inches='tight', dpi=200)
+    else:
+        plt.show()
+
+
 if __name__ == '__main__':
     # fpp_tw_dist(data=False)
-    fpp_tw_pareto(data=False)
+    # fpp_tw_pareto(data=False)
     # fpptw_sde_real()
     # fpptw_sde_psd()
     # power_law_pulse()
+    test_FPP()
