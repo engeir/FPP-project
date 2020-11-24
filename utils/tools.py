@@ -305,7 +305,7 @@ def ridge_plot_psd(data, fs, *args, xlabel=False, ylabel=False, labels=False, fi
         col[i] = next(clr)
         l = ax_objs[-1].loglog(fp[1:], P_Xn[1:], color=(col[0], col[1], col[2]), label='periodogram', alpha=.5)[0]
         l2.append(l)
-        for nperseg in 2**np.array([13, 10]):
+        for nperseg in 2**np.array([19, 15]):
             f, S_Xn = ssi.welch(Xn, fs=fs, nperseg=nperseg)
             col[i] = next(clr)
             ax_objs[-1].loglog(f[1:], S_Xn[1:], color=(col[0], col[1], col[2]), label='welch $2^{' + str(int(np.log2(nperseg))) + '}$', alpha=.6)

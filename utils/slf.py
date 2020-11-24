@@ -554,8 +554,8 @@ class FPPProcess(Process):
             t = parameter[0]
             f = parameter[1]
             ta = t[f > 0]
-        trw = np.diff(ta)
-        tw = np.sort(trw)[::-1]
+        tw = np.diff(ta)
+        # tw = np.sort(trw)[::-1]
         return tw, np.arange(len(tw))
 
     def plot_tw(self, parameter=None, new_fig=True):
