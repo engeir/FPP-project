@@ -16,6 +16,7 @@ import sys
 from abc import ABC, abstractmethod, abstractproperty
 
 import matplotlib.pyplot as plt
+from matplotlib import collections as matcoll
 import numpy as np
 import sdepy
 import tick.base as tb
@@ -318,6 +319,7 @@ class FPPProcess(Process):
         self.tw = 'exp'
         self.TWkappa = .5
         self.amp = 'exp'
+        self.mA = 1.
 
     def create_rate(self, version, k_length=True, tw=False):
         assert version in ['ou', 'n-random']
@@ -365,8 +367,8 @@ class FPPProcess(Process):
             t = np.linspace(0, np.sum(rate), int(1e5))
             int_thresholds = np.linspace(0, np.sum(rate), self.K)
             c_sum = np.cumsum(rate)
-            ta = tools.find_nearest(c_sum, int_thresholds)
-            ta = t[ta]
+            ta_i = tools.find_nearest(c_sum, int_thresholds)
+            ta = t[ta_i]
             # Normalize arrival times to within T_max
             ta = ta * self.T / np.ceil(np.max(ta))
             amp, _, _ = gsn.amp_ta(self.gamma, self.K)
@@ -388,6 +390,54 @@ class FPPProcess(Process):
             ipp.threshold_negative_intensity()
             ipp.simulate()
             ta = ipp.timestamps[0]
+            # # PLOT RATE AND ESTIMATED ARRIVAL TIMES
+            # y = ipp.tracked_intensity[0]
+            # xx = ipp.intensity_tracked_times
+            # idx = tools.find_nearest(xx, ta)
+            # sc_x = xx[idx]
+            # print(len(sc_x))
+            # sc_y = y[idx]
+            # lines = []
+            # for i in range(len(sc_x)):
+            #     pair = [(sc_x[i], 0), (sc_x[i], sc_y[i])]
+            #     lines.append(pair)
+            # linecoll = matcoll.LineCollection(lines, colors='r', linewidths=.5)
+            # plt.figure(figsize=(7, 1))
+            # ax = plt.subplot(1, 2, 1)
+            # plt.plot(t, rate, 'k', zorder=-1)
+            # ax.add_collection(linecoll)
+            # plt.scatter(sc_x, sc_y, color='r', zorder=1)
+            # plt.text(0, .2, f'Tick — $ K={len(sc_x)} $', size=5)
+            # # For var_rate as well
+            # t = np.linspace(0, np.sum(rate), int(1e5))
+            # int_thresholds = np.linspace(0, np.sum(rate), self.K)
+
+            # c_sum = np.cumsum(rate)
+            # ta_i = tools.find_nearest(c_sum, int_thresholds)
+            # ta = t[ta_i]
+            # # Normalize arrival times to within T_max
+            # tt = t * self.T / np.ceil(np.max(ta))  # Needed only for plotting
+            # ta = ta * self.T / np.ceil(np.max(ta))
+            # # PLOT RATE AND ESTIMATED ARRIVAL TIMES
+            # sc_x = ta
+            # print(len(sc_x))
+            # sc_y = rate[ta_i]
+            # lines = []
+            # for i in range(len(sc_x)):
+            #     pair = [(sc_x[i], 0), (sc_x[i], sc_y[i])]
+            #     lines.append(pair)
+            # linecoll = matcoll.LineCollection(lines, colors='r', linewidths=.5)
+            # ax = plt.subplot(1, 2, 2)
+            # plt.plot(tt, rate, 'k', zorder=-1)
+            # ax.add_collection(linecoll)
+            # plt.scatter(sc_x, sc_y, color='r')
+            # plt.text(0, .2, f'Int — $ K={len(sc_x)} $', size=5)
+            # save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
+            # plt.savefig(f'{save_path}rate_sampling.pdf',
+            #             bbox_inches='tight', format='pdf', dpi=200)
+            # plt.show()
+            # sys.exit()
+            # # PLOT RATE AND ESTIMATED ARRIVAL TIMES
             self.K = len(ta)
             amp, _, _ = gsn.amp_ta(self.gamma, self.K)
         return amp, ta
@@ -516,7 +566,7 @@ class FPPProcess(Process):
         # Equal seeds give correlated amplitude and waiting times.
         # prev. good seeds: (20, 31)
         try:
-            t, _, response, amp, ta = gsn.make_signal(self.gamma, self.K, self.dt,  # kernsize=2**17,
+            t, _, response, amp, ta = gsn.make_signal(self.gamma, self.K, self.dt, mA=self.mA,
                                                       eps=self.snr, ampta=True, dynamic=True,
                                                       kerntype=self.kern_dict[self.kern], lam=.5,
                                                       TWdist=self.tw, Adist=self.amp, TWkappa=self.TWkappa)

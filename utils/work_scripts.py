@@ -4,6 +4,7 @@ sys.path.append('/Users/eirikenger/uit_scripts')
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as grid_spec
+from scipy.optimize import curve_fit
 
 import slf
 import tools
@@ -99,12 +100,12 @@ def amplitude_dist(data=True, save=False):
         amps = f['amps']
 
     lab = [f'{a}' for a in amp]
-    tools.ridge_plot_psd(data1, dt, xlabel='$ f $',
+    tools.ridge_plot_psd(data1, dt, 'squeeze', xlabel='$ f $',
                          ylabel='PSD', labels=lab[:3], figname=figs[0])
-    tools.ridge_plot_psd(data2, dt, xlabel='$ f $',
+    tools.ridge_plot_psd(data2, dt, 'squeeze', xlabel='$ f $',
                          ylabel='PSD', labels=lab[3:], figname=figs[1])
     tools.ridge_plot(amps, xlabel='$ \Phi $', ylabel='PDF',
-                     labels=lab, figname=figs[2], y_scale=.72)
+                     labels=lab, figname=figs[2], y_scale=.64)
 
     if save:
         for f in figs:
@@ -266,9 +267,9 @@ def fpp_sde_psdpdf(data=True, save=False):
         sde = f['sde']
 
     lab = [f'$\gamma = {g}$' for g in gamma]
-    tools.ridge_plot_psd(fpp, dt, xlabel='$ f $',
+    tools.ridge_plot_psd(fpp, dt, 'squeeze', xlabel='$ f $',
                          ylabel='$ S $', labels=lab, figname=figs[0])
-    tools.ridge_plot_psd(sde, dt, xlabel='$ f $',
+    tools.ridge_plot_psd(sde, dt, 'squeeze', xlabel='$ f $',
                          ylabel='$ S $', labels=lab, figname=figs[1])
 
     if save:
@@ -295,7 +296,7 @@ def sde_tw(data=True, save=False):
     # file = 'sde.npz'
     file = f'{data_path}sde_L.npz'
     # file = f'{data_path}sde_w11.npz'
-    figs = ['sde', 'tw_semilogy', 'amp', 'corr']
+    figs = ['sde', 'tw', 'amp', 'corr']
     if not data:
         p = slf.SDEProcess()
         # print(f'Loading data from {file}')
@@ -336,7 +337,16 @@ def sde_tw(data=True, save=False):
     # force = F
     TW = []
     AMP = []
-    corr = []
+    # corr = []
+    tw_exp = []
+    amp_exp = []
+    tw_std = []
+    twtxt_x = 20
+    twtxt_y = [5e4, 5e1, 1e-1, 2e-4]
+    tw_fit = []
+    amp_std = []
+    amptxt_y = [1e7, 5e3, 2e0, 2e-4]
+    amp_fit = []
     for i, (s, a) in enumerate(zip(ta, amp)):
         if i == 4:
             a = (a - a.mean()) / a.std()
@@ -350,17 +360,42 @@ def sde_tw(data=True, save=False):
             plt.plot(np.diff(s[mask]))
             plt.show()
 
+        amp_std.append(a.std())
         a = (a - 0) / a.std()
         # s = np.diff(s[a > 1e-10])
         s = np.diff(s)
-        co = (s - s.mean()) / s.std()
+        # co = (s - s.mean()) / s.std()
+        tw_std.append(s.std())
         s = (s - 0) / s.std()
-        corr.append((np.linspace(-1, 1, len(co)),
-                     np.correlate(co, co, 'same') / np.correlate(co, co)))
+        # corr.append((np.linspace(-1, 1, len(co)),
+        #              np.correlate(co, co, 'same') / np.correlate(co, co)))
         y, _, x = sa.distribution(a, 70)
         AMP.append((x, y))
+        mask = (x > 2.6) & (x < 10)
+        x1 = x[mask]
+        y1 = y[mask]
+        if i in (2, 3):
+            popt, _ = curve_fit(tools.exp_func, x1, y1)
+            amp_exp.append((x, tools.exp_func(x, *popt)))
+            amp_fit.append(f'$\mathrm{{exp}} = - {popt[1]:2.2f}$')
+        else:
+            popt, _ = curve_fit(tools.pow_func, x1, y1)
+            amp_exp.append((x, tools.pow_func(x, *popt)))
+            amp_fit.append(f'$\mathrm{{pow}} = - {popt[1]:2.2f}$')
         y, _, x = sa.distribution(s, 71)
         TW.append((x, y))
+        mask = (x > 2.7) & (x < 10)
+        # mask = (x > 1.3) & (x < 14)
+        x1 = x[mask]
+        y1 = y[mask]
+        if i in (2, 3):
+            popt, _ = curve_fit(tools.exp_func, x1, y1)
+            tw_exp.append((x, tools.exp_func(x, *popt)))
+            tw_fit.append(f'$\mathrm{{exp}} = - {popt[1]:2.2f}$')
+        else:
+            popt, _ = curve_fit(tools.pow_func, x1, y1)
+            tw_exp.append((x, tools.pow_func(x, *popt)))
+            tw_fit.append(f'$\mathrm{{pow}} = - {popt[1]:2.2f}$')
     tw = TW
     amp = AMP
     lab = [f'$\gamma = {g}$' for g in gamma]
@@ -374,19 +409,35 @@ def sde_tw(data=True, save=False):
     # plt.scatter(f0[f1 > 1e-10], f1[f1 > 1e-10], color='b')
     # # plt.figure()
     # # plt.plot(sde[1][0], sde[1][1])
+
+    # Plotting the four figures that are used
     plt.rcParams['lines.linewidth'] = .4
     # tools.ridge_plot(sde, 'grid', xlabel='$ t $', ylabel='$ \Phi $',
     #                  labels=lab, figname=figs[0], plt_type='plot')  # , xlim=[0, 200])
     plt.rcParams['lines.linewidth'] = 1.5
-    tools.ridge_plot(tw, 'grid', 'squeeze', 'dots', xlabel='$ t_k $', ylabel='$ P_{t_k} $',
-                     labels=lab, figname=figs[1], plt_type='semilogy', y_scale=1.13)  # , xlim=[0, 200])
-    # tools.ridge_plot(amp, 'grid', 'squeeze', 'dots', xlabel='$ A_k $', ylabel='$ P_{A_k} $',
-    #                  labels=lab, figname=figs[2], plt_type='loglog')  # , xlim=[0, 200])
-    tools.ridge_plot(corr, 'slalomaxis', xlabel='Lag', ylabel='Correlation',
-                     labels=lab, figname=figs[3], plt_type='semilogy', xlim=[-.3, .3], ylim=[1e-3, 2e0])
+    tools.ridge_plot(tw_exp, 'squeeze', 'blank', color='k', lt='--',
+                     labels=lab, figname=figs[1], plt_type='loglog', y_scale=1.13, ylim=(5e-6, 1e0), xlim=[1e-1, 1e2])
+    tools.ridge_plot(tw, 'grid', 'squeeze', 'dots', xlabel='$ \\tau_{\mathrm{w},k} $', ylabel='$ P_{\\tau_{\mathrm{w},k}} $',
+                     labels=lab, figname=figs[1], plt_type='loglog', y_scale=1.13, ylim=(5e-6, 1e0), xlim=[1e-1, 1e2])
+    for yy, txt, txt2 in zip(twtxt_y, tw_std, tw_fit):
+        plt.text(twtxt_x, yy, f'{txt2}', horizontalalignment='left',
+                verticalalignment='bottom', size=5)
+        plt.text(twtxt_x, yy, f'$ \mathrm{{std}} = {txt:2.2f}$', horizontalalignment='left',
+                verticalalignment='top', size=5)
+    tools.ridge_plot(amp_exp, 'squeeze', 'blank', color='k', lt='--',
+                     labels=lab, figname=figs[2], plt_type='loglog', y_scale=1.13, xlim=[6e-2, 1e2], ylim=(5e-6, 2e1))
+    tools.ridge_plot(amp, 'grid', 'squeeze', 'dots', xlabel='$ A_k $', ylabel='$ P_{A_k} $',
+                     labels=lab, figname=figs[2], plt_type='loglog', y_scale=1.13, xlim=[6e-2, 1e2], ylim=(5e-6, 2e1))
+    for yy, txt, txt2 in zip(amptxt_y, amp_std, amp_fit):
+        plt.text(twtxt_x, yy, f'{txt2}', horizontalalignment='left',
+                verticalalignment='bottom', size=5)
+        plt.text(twtxt_x, yy, f'$ \mathrm{{std}} = {txt:2.2f}$', horizontalalignment='left',
+                verticalalignment='top', size=5)
+    # tools.ridge_plot(corr, 'slalomaxis', xlabel='Lag', ylabel='Correlation',
+    #                  labels=lab, figname=figs[3], plt_type='semilogy', xlim=[-.3, .3], ylim=[1e-3, 2e0])
 
     if save:
-        for f in [figs[1], figs[-1]]:
+        for f in [figs[1], figs[2]]:
             print(f'Saving to {save_path}sde_anlz_{f}.*')
             plt.figure(f)
             plt.tight_layout()
@@ -397,22 +448,23 @@ def sde_tw(data=True, save=False):
         plt.show()
 
 
-# Figure 7
+# Figure 8
 def fpp_tw_real(data=True, save=False):
     file = f'{data_path}fpp_tw_real.npz'
-    rate = ['n-random', 'n-random']
-    figs = ['cox', 'tick']
+    # file = f'{data_path}fpp_tw_real_ou.npz'
+    rate = ['ou', 'ou', 'ou']
+    figs = ['cox', 'tick', 'var_rate']
     gamma = [.01, .1, 1.]
     if not data:
         p = slf.FPPProcess()
         dt = 1e-2
         N = int(1e6)
         snr = .0
-        fpps = [[], []]
+        fpps = [[], [], []]
         for i, (r, tw) in enumerate(zip(rate, figs)):
             for g in gamma:
                 p.set_params(gamma=g, K=int(N * g * dt), dt=dt,
-                             tw=tw, snr=snr, rate=r, amp='ray')
+                             tw=tw, snr=snr, rate=r, amp='exp')
                 s1, _, s2 = p.create_realisation(fit=False)
                 s = (s1, s2)
                 fpps[i].append(s)
@@ -420,13 +472,15 @@ def fpp_tw_real(data=True, save=False):
 
         fpp_c = fpps[0]
         fpp_t = fpps[1]
+        fpp_v = fpps[2]
         del fpps
-        np.savez(file, fpp_c=fpp_c, fpp_t=fpp_t)
+        np.savez(file, fpp_c=fpp_c, fpp_t=fpp_t, fpp_v=fpp_v)
     else:
         print(f'Loading data from {file}')
         f = np.load(file, allow_pickle=True)
         fpp_c = f['fpp_c']
         fpp_t = f['fpp_t']
+        fpp_v = f['fpp_v']
 
     plt.rcParams['lines.linewidth'] = .4
     lab = [f'$\gamma = {g}$' for g in gamma]
@@ -434,48 +488,54 @@ def fpp_tw_real(data=True, save=False):
                      labels=lab, figname=figs[0])
     tools.ridge_plot(fpp_t, xlabel='$ t $', ylabel='$\Phi$',
                      labels=lab, figname=figs[1])
+    tools.ridge_plot(fpp_v, xlabel='$ t $', ylabel='$\Phi$',
+                     labels=lab, figname=figs[2])
 
     if save:
         for f in figs:
-            print(f'Saving to {save_path}{f}.*')
+            print(f'Saving to {save_path}fpp_tw_real_nrand_{f}.*')
+            # print(f'Saving to {save_path}fpp_tw_real_ou_{f}.*')
             plt.figure(f)
             plt.tight_layout()
-            plt.savefig(f'{save_path}{f}.pdf',
+            plt.savefig(f'{save_path}fpp_tw_real_nrand_{f}.pdf',
                         bbox_inches='tight', format='pdf', dpi=200)
-            plt.savefig(f'{save_path}{f}.pgf', bbox_inches='tight', dpi=200)
+            plt.savefig(f'{save_path}fpp_tw_real_nrand_{f}.pgf', bbox_inches='tight', dpi=200)
     else:
         plt.show()
 
 
-# Figure 8
+# Figure 9
 def fpp_tw_psd(save=False):
     file = f'{data_path}fpp_tw_real.npz'
-    figs = ['cox_psd', 'tick_psd']
+    # file = f'{data_path}fpp_tw_real_ou.npz'
+    figs = ['cox_psd', 'tick_psd', 'var_rate_psd']
     gamma = [.01, .1, 1.]
     dt = 1e-2
 
     print(f'Loading data from {file}')
     f = np.load(file, allow_pickle=True)
-    # fpp_vr = f['fpp_vr']
     fpp_c = f['fpp_c']
     fpp_t = f['fpp_t']
+    fpp_v = f['fpp_v']
     del f
 
     lab = [f'$\gamma = {g}$' for g in gamma]
-    # tools.ridge_plot_psd(fpp_vr, dt, xlabel='$ f $', ylabel='$ S $', labels=lab, figname=figs[0])
-    tools.ridge_plot_psd(fpp_c, dt, xlabel='$ f $',
+    tools.ridge_plot_psd(fpp_c, dt, 'squeeze', xlabel='$ f $',
                          ylabel='$ S $', labels=lab, figname=figs[0])
-    tools.ridge_plot_psd(fpp_t, dt, xlabel='$ f $',
+    tools.ridge_plot_psd(fpp_t, dt, 'squeeze', xlabel='$ f $',
                          ylabel='$ S $', labels=lab, figname=figs[1])
+    tools.ridge_plot_psd(fpp_v, dt, 'squeeze', xlabel='$ f $',
+                         ylabel='$ S $', labels=lab, figname=figs[2])
 
     if save:
         for f in figs:
-            print(f'Saving to {save_path}{f}.*')
+            print(f'Saving to {save_path}fpp_tw_psd_nrand_{f}.*')
+            # print(f'Saving to {save_path}fpp_tw_psd_ou_{f}.*')
             plt.figure(f)
             plt.tight_layout()
-            plt.savefig(f'{save_path}{f}.pdf',
+            plt.savefig(f'{save_path}fpp_tw_psd_nrand_{f}.pdf',
                         bbox_inches='tight', format='pdf', dpi=200)
-            plt.savefig(f'{save_path}{f}.pgf', bbox_inches='tight', dpi=200)
+            plt.savefig(f'{save_path}fpp_tw_psd_nrand_{f}.pgf', bbox_inches='tight', dpi=200)
     else:
         plt.show()
 
@@ -486,8 +546,9 @@ if __name__ == '__main__':
     # fpp_sde_real_L()  # 4
     # fpp_sde_psdpdf()  # 5
     sde_tw()  # 6
-    # fpp_tw_real()  # 7
-    # fpp_tw_psd()  # 8
+    # Figure 7 is created in slf.py
+    # fpp_tw_real()  # 8
+    # fpp_tw_psd()  # 9
     # fpp_tw_dist(data=False)
     # fpp_tw_cox()
     # fpptw_sde_real()
