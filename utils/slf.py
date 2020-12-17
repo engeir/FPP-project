@@ -1,15 +1,6 @@
-"""The stochastic logistic equation (see the manuscripts "garcia-fpp-sde"
-and "theodorsen-fpp-sde") has striking similarities to the filtered Poisson process:
-it is gamma distributed and has a Lorentzian power spectrum for about γ>5.
-For small γ, however, it displays a range of scaling in the power law with slope f−1/2.
-
--   By making realizations of the FPP with power-law pulse shapes, power-law distributed
-    waiting times investigate if this behaviour can be reproduced in the FPP.
--   Clustering / fractal Poisson rates can also be implemented
-    (see Fractal-Based Point Processes, Lowen & Teich, Wiley).
--   Although the SLE does not contain "events" as such, deconvolving the SLE with
-    an exponential pulse may yield information on the behaviour of "events"
-    or "amplitudes" in the SLE, and "events" may be compared to variable-rate Poisson processes.
+"""Wrapper script for the uit-scripts library with limited support.
+Especially suited for creating time series realizations / processes
+with implementation of clustering methods for waiting times.
 """
 
 import sys
@@ -664,8 +655,7 @@ class FPPProcess(Process):
 
 
 if __name__ == '__main__':
-    # f^(-1/2) candidates:
-    # kern, tw, gamma = 1exp, var_rate, 1.
+    ## === Examples ===
     # p = Process()
     # kern = ['1exp']  #, '1exp']  # 'power', '1exp', '1exp'
     # tw = ['exp']  #, 'var_rate']  # 'var_rate', 'ray', 'cluster'
