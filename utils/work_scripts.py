@@ -15,9 +15,10 @@ from uit_scripts.plotting import figure_defs as fd
 
 fd.set_rcparams_article_thickline(plt.rcParams)
 plt.rcParams['font.family'] = 'DejaVu Sans'
+plt.rcParams['pgf.texsystem'] = 'pdflatex'
 
-data_path = '/home/een023/Documents/FPP_SOC_Chaos/report/data/'
-save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
+data_path = '/home/een023/Documents/work/FPP_SOC_Chaos/report/data/'
+save_path = '/home/een023/Documents/work/FPP_SOC_Chaos/report/figures/'
 # save_path = ''
 
 
@@ -337,7 +338,7 @@ def sde_tw(data=True, save=False):
     # force = F
     TW = []
     AMP = []
-    # corr = []
+    corr = []
     tw_exp = []
     amp_exp = []
     tw_std = []
@@ -364,11 +365,11 @@ def sde_tw(data=True, save=False):
         a = (a - 0) / a.std()
         # s = np.diff(s[a > 1e-10])
         s = np.diff(s)
-        # co = (s - s.mean()) / s.std()
+        co = (s - s.mean()) / s.std()
         tw_std.append(s.std())
         s = (s - 0) / s.std()
-        # corr.append((np.linspace(-1, 1, len(co)),
-        #              np.correlate(co, co, 'same') / np.correlate(co, co)))
+        corr.append((np.linspace(-1, 1, len(co)),
+                     np.correlate(co, co, 'same') / np.correlate(co, co)))
         y, _, x = sa.distribution(a, 70)
         AMP.append((x, y))
         mask = (x > 2.6) & (x < 10)
@@ -415,35 +416,35 @@ def sde_tw(data=True, save=False):
     # tools.ridge_plot(sde, 'grid', xlabel='$ t $', ylabel='$ \Phi $',
     #                  labels=lab, figname=figs[0], plt_type='plot')  # , xlim=[0, 200])
     plt.rcParams['lines.linewidth'] = 1.5
-    tools.ridge_plot(tw_exp, 'squeeze', 'blank', color='k', lt='--',
-                     labels=lab, figname=figs[1], plt_type='loglog', y_scale=1.13, ylim=(5e-6, 1e0), xlim=[1e-1, 1e2])
-    tools.ridge_plot(tw, 'grid', 'squeeze', 'dots', xlabel='$ \\tau_{\mathrm{w},k} $', ylabel='$ P_{\\tau_{\mathrm{w},k}} $',
-                     labels=lab, figname=figs[1], plt_type='loglog', y_scale=1.13, ylim=(5e-6, 1e0), xlim=[1e-1, 1e2])
-    for yy, txt, txt2 in zip(twtxt_y, tw_std, tw_fit):
-        plt.text(twtxt_x, yy, f'{txt2}', horizontalalignment='left',
-                verticalalignment='bottom', size=5)
-        plt.text(twtxt_x, yy, f'$ \mathrm{{std}} = {txt:2.2f}$', horizontalalignment='left',
-                verticalalignment='top', size=5)
-    tools.ridge_plot(amp_exp, 'squeeze', 'blank', color='k', lt='--',
-                     labels=lab, figname=figs[2], plt_type='loglog', y_scale=1.13, xlim=[6e-2, 1e2], ylim=(5e-6, 2e1))
-    tools.ridge_plot(amp, 'grid', 'squeeze', 'dots', xlabel='$ A_k $', ylabel='$ P_{A_k} $',
-                     labels=lab, figname=figs[2], plt_type='loglog', y_scale=1.13, xlim=[6e-2, 1e2], ylim=(5e-6, 2e1))
-    for yy, txt, txt2 in zip(amptxt_y, amp_std, amp_fit):
-        plt.text(twtxt_x, yy, f'{txt2}', horizontalalignment='left',
-                verticalalignment='bottom', size=5)
-        plt.text(twtxt_x, yy, f'$ \mathrm{{std}} = {txt:2.2f}$', horizontalalignment='left',
-                verticalalignment='top', size=5)
-    # tools.ridge_plot(corr, 'slalomaxis', xlabel='Lag', ylabel='Correlation',
-    #                  labels=lab, figname=figs[3], plt_type='semilogy', xlim=[-.3, .3], ylim=[1e-3, 2e0])
+    # tools.ridge_plot(tw_exp, 'squeeze', 'blank', color='k', lt='--',
+    #                  labels=lab, figname=figs[1], plt_type='loglog', y_scale=1.13, ylim=(5e-6, 1e0), xlim=[1e-1, 1e2])
+    # tools.ridge_plot(tw, 'grid', 'squeeze', 'dots', xlabel='$ \\tau_{\mathrm{w},k} $', ylabel='$ P_{\\tau_{\mathrm{w},k}} $',
+    #                  labels=lab, figname=figs[1], plt_type='loglog', y_scale=1.13, ylim=(5e-6, 1e0), xlim=[1e-1, 1e2])
+    # for yy, txt, txt2 in zip(twtxt_y, tw_std, tw_fit):
+    #     plt.text(twtxt_x, yy, f'{txt2}', horizontalalignment='left',
+    #             verticalalignment='bottom', size=5)
+    #     plt.text(twtxt_x, yy, f'$ \mathrm{{std}} = {txt:2.2f}$', horizontalalignment='left',
+    #             verticalalignment='top', size=5)
+    # tools.ridge_plot(amp_exp, 'squeeze', 'blank', color='k', lt='--',
+    #                  labels=lab, figname=figs[2], plt_type='loglog', y_scale=1.13, xlim=[6e-2, 1e2], ylim=(5e-6, 2e1))
+    # tools.ridge_plot(amp, 'grid', 'squeeze', 'dots', xlabel='$ A_k $', ylabel='$ P_{A_k} $',
+    #                  labels=lab, figname=figs[2], plt_type='loglog', y_scale=1.13, xlim=[6e-2, 1e2], ylim=(5e-6, 2e1))
+    # for yy, txt, txt2 in zip(amptxt_y, amp_std, amp_fit):
+    #     plt.text(twtxt_x, yy, f'{txt2}', horizontalalignment='left',
+    #             verticalalignment='bottom', size=5)
+    #     plt.text(twtxt_x, yy, f'$ \mathrm{{std}} = {txt:2.2f}$', horizontalalignment='left',
+    #             verticalalignment='top', size=5)
+    tools.ridge_plot(corr, 'grid', 'slalomaxis', xlabel='Lag', ylabel='Correlation',
+                     labels=lab, figname=figs[3], plt_type='plot', xlim=[- .0001, .001])  # , ylim=[1e-3, 2e0])
 
     if save:
-        for f in [figs[1], figs[2]]:
+        for f in [figs[3]]:
             print(f'Saving to {save_path}sde_anlz_{f}.*')
             plt.figure(f)
             plt.tight_layout()
-            plt.savefig(f'{save_path}sde_anlz_{f}.pdf',
-                        bbox_inches='tight', format='pdf', dpi=200)
-            # plt.savefig(f'{save_path}sde_anlz_{f}.pgf', bbox_inches='tight')
+            # plt.savefig(f'{save_path}sde_anlz_{f}.pdf',
+            #             bbox_inches='tight', format='pdf', dpi=200)
+            plt.savefig(f'{save_path}sde_anlz_{f}.pgf', bbox_inches='tight')
     else:
         plt.show()
 
@@ -545,7 +546,7 @@ if __name__ == '__main__':
     # fpp_sde_realisations()  # 3
     # fpp_sde_real_L()  # 4
     # fpp_sde_psdpdf()  # 5
-    sde_tw()  # 6
+    sde_tw(save=True)  # 6
     # Figure 7 is created in slf.py
     # fpp_tw_real()  # 8
     # fpp_tw_psd()  # 9

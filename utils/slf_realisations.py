@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as grid_spec
+import matplotlib.ticker as mticker
 import scipy.signal as ssi
 from scipy.optimize import curve_fit
 
@@ -15,6 +16,7 @@ from uit_scripts.plotting import figure_defs as fd
 import uit_scripts.stat_analysis as sa
 fd.set_rcparams_article_thickline(plt.rcParams)
 plt.rcParams['font.family'] = 'DejaVu Sans'
+plt.rcParams['pgf.texsystem'] = 'pdflatex'
 # plt.style.use('ggplot')
 # pu.figure_setup()
 
@@ -27,8 +29,8 @@ plt.rcParams['font.family'] = 'DejaVu Sans'
 #     'pgf.texsystem': 'pdflatex'
 # })
 
-data_path = '/home/een023/Documents/FPP_SOC_Chaos/report/data/'
-save_path = '/home/een023/Documents/FPP_SOC_Chaos/report/figures/'
+data_path = '/home/een023/Documents/work/FPP_SOC_Chaos/report/data/'
+save_path = '/home/een023/Documents/work/FPP_SOC_Chaos/report/figures/'
 
 
 def fpp_tw_dist(data: bool = True, save=False):
@@ -104,18 +106,19 @@ def fpp_tw_dist(data: bool = True, save=False):
     del fpp_t
 
     lab = [f'$\gamma = {g}$' for g in gamma]
-    plt_type = 'semilogy'
+    plt_type = 'loglog'
+    # y_scale = .4 in report
     plt_type_c = 'plot'
     xlim_c = (-.2, .2)
     # tools.ridge_plot_psd(fpp_vr, dt, xlabel='$ f $', ylabel='$ S $', labels=lab, figname=figs[0])
     tools.ridge_plot(TW_e, 'grid', 'dots', xlabel='$ \\tau_\mathrm{w} $', plt_type=plt_type,
-                     ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[0], y_scale=.4)
+                     ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[0], y_scale=.6)
     tools.ridge_plot(TW_p, 'grid', 'dots', xlabel='$ \\tau_\mathrm{w} $', plt_type=plt_type,
-                     ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[1], y_scale=.4)
+                     ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[1], y_scale=.6)
     tools.ridge_plot(TW_c, 'grid', 'dots', xlabel='$ \\tau_\mathrm{w} $', plt_type=plt_type,
-                     ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[2], y_scale=.4)  #, xlim=(0, 40))
+                     ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[2], y_scale=.6)  #, xlim=(0, 40))
     tools.ridge_plot(TW_t, 'grid', 'dots', xlabel='$ \\tau_\mathrm{w} $', plt_type=plt_type,
-                     ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[3], y_scale=.4)  #, xlim=(0, 20))
+                     ylabel='$ P_{\\tau_{\mathrm{w}}} $', labels=lab, figname=figs[3], y_scale=.6)  #, xlim=(0, 20))
     # tools.ridge_plot(corr_e, 'grid', xlabel='$ \\tau_\mathrm{w} $', plt_type=plt_type_c,
     #                  ylabel='Correlate', labels=lab, figname=figs[4], xlim=xlim_c)
     # tools.ridge_plot(corr_p, 'grid', xlabel='$ \\tau_\mathrm{w} $', plt_type=plt_type_c,
@@ -409,12 +412,12 @@ def test_FPP(data=True, save=False):
 
 
 def test_compare(data=True, save=False):
-    filename = 'final_g01'
-    file = f'{data_path}{filename}.npz'
+    filename = 'final_g10'
+    file = f'{data_path}{filename}_new.npz'
     rate = 'n-random'
     tw_ = 'pareto'
-    figs = ['sig', 'psd']
-    gamma = [1e-2]
+    figs = ['sig', 'psd_new']
+    gamma = [1e1]
     dt = 1e-2
     if not data:
         pf = slf.FPPProcess()
@@ -423,7 +426,7 @@ def test_compare(data=True, save=False):
         snr = .0
         sig = []
         for g in gamma:
-            pf.set_params(gamma=g, K=int(N * g * dt), dt=dt, TWkappa=.5, mA=1.,
+            pf.set_params(gamma=g, K=int(N * g * dt), dt=dt, TWkappa=.5 + g, mA=1.,
                          tw=tw_, snr=snr, rate=rate, amp='exp', kern='1exp')
             ps.set_params(gamma=g, K=int(N * g * dt), dt=dt)
 
@@ -438,6 +441,9 @@ def test_compare(data=True, save=False):
     else:
         print(f'Loading data from {file}')
         f = np.load(file, allow_pickle=True)
+        tw_lim = np.load(
+            f'/home/een023/Documents/work/FPP_SOC_Chaos/report/data/{filename}_minmax.npz', allow_pickle=True)
+        tw_lim = (tw_lim['tw_min'], tw_lim['tw_max'])
         sig = f['sig']
         del f
 
@@ -445,7 +451,7 @@ def test_compare(data=True, save=False):
     psd = []
     power = []
     first = 0
-    x_pos = [1e-8, 1e-4]
+    x_pos = [1e-5, 3e-1]
     y_pos = []
     # Calculate power spectra
     for s in sig:
@@ -453,36 +459,40 @@ def test_compare(data=True, save=False):
         Xn = (s - s.mean()) / s.std()
         if first:
             # Create Lorentz spectrum
-            fp, _ = ssi.periodogram(Xn, fs=dt)
-            w = 2 * np.pi * fp[1:]
-            t_d = (1 / dt)**2
+            fp_, _ = ssi.periodogram(Xn, fs=1/dt, return_onesided=False)
+            fp = fp_[fp_ > 0]
+            w = 2 * np.pi * fp
+            t_d = (1)**2
             lor = 2 * t_d / (1 + (t_d * w)**2)
-            psd.insert(1, [fp[1:], lor])
+            psd.insert(1, [fp, lor])
 
-        f, S_Xn = ssi.welch(Xn, fs=dt, nperseg=2**18)
+        f_, S_Xn = ssi.welch(Xn, fs=1/dt, nperseg=2**18, return_onesided=False)
+        f = f_[f_ > 0]
+        S_Xn = S_Xn[f_ > 0]
         # if first:
-        x = f[1:]
-        y = S_Xn[1:]
-        mask = (x < 4e-6)
+        x = f
+        y = S_Xn
+        # mask = (x < 4e-6)
+        mask = (x < 5e-2)
         x1 = x[mask]
         y1 = y[mask]
         popt, _ = curve_fit(tools.pow_func, x1, y1)
-        y = tools.pow_func(x, *popt)
-        y_pos.append(y[(np.abs(x - x_pos.pop())).argmin()] * 1.4)
-        psd.append((x, y))
+        y1 = tools.pow_func(x1, *popt)  # * 5
+        y_pos.append(y1[(np.abs(x1 - x_pos.pop())).argmin()] * 1.4)
+        psd.append((x1, y1))
         power.append(popt[1])
-        psd.insert(first, [f[1:], S_Xn[1:]])
+        psd.insert(first, [f, S_Xn])
         first = 1
 
-    # lab = ['FPP', 'SLE']
-    # plt.rcParams['lines.linewidth'] = .4
-    # tools.ridge_plot(sig, xlabel='$ t $', ylabel='$ \Phi $',
-    #                  figname=figs[0], labels=lab)
+    lab = ['FPP', 'SLE'][::-1]
+    plt.rcParams['lines.linewidth'] = .4
+    tools.ridge_plot(sig[::-1], xlabel='$ t $', ylabel='$ \Phi $',
+                     figname=figs[0], labels=lab)
     plt.rcParams['lines.linewidth'] = 1.5
     lab = [f'FPP; $ \\tau_{{\mathrm{{w}}, k}} \sim\,${tw_}', 'SLE', 'Lorentz spectrum',
            'Power law fit; FPP', 'Power law fit; SLE']
     plot_f = getattr(plt, 'loglog')
-    plt.figure(figs[1], figsize=(4, 3))
+    plt.figure(figs[1], figsize=(4, 2.5))
     for i, p in enumerate(psd):
         alpha = 1 if i > 1 else .7
         l = '--k' if i == 2 else '-'
@@ -490,15 +500,25 @@ def test_compare(data=True, save=False):
         l = ':k' if i == 4 else l
         plot_f(p[0], p[1], l, alpha=alpha)
     plt.legend(lab, loc='lower left')
-    for x_p, y_p, pp in zip([1e-4, 1e-8], y_pos, power):
+    g_str = filename[7:]
+    g_str = g_str[0] + '.' + g_str[1:] if g_str[0] == '0' else g_str
+    plt.text(2e-2, 1.6e-4, f'$ \gamma={float(g_str)} $', size=13)
+    f = mticker.ScalarFormatter(useOffset=False, useMathText=True)
+    g = lambda x,pos : "{}".format(f._formatSciNotation('%1.3e' % x))
+    fmt = mticker.FuncFormatter(g)
+    # plt.text(1e-5, 2e-1, f'$ \\tau_{{\mathrm{{w}},\min}}={fmt(tw_lim[0])} $')
+    # plt.text(1e-5, 5e-2, f'$ \\tau_{{\mathrm{{w}},\max}}={fmt(tw_lim[1])} $')
+    for x_p, y_p, pp in zip([3e-1, 1e-5], y_pos, power):
         pp *= -1
-        ls = ':' if x_p == 1e-8 else '-.'
+        ls = ':' if x_p == 1e-5 else '-.'
         plt.text(x_p, y_p, f'$ \mathrm{{pow}} = {pp:2.2f} $', ha='left', va='bottom', bbox=dict(
             facecolor='none', edgecolor='k', pad=1.0, ls=ls))
-    plt.axvspan(x1[0], x1[-1], alpha=0.2, color='gray')
+    # plt.axvspan(1 / tw_lim[1], 1 / tw_lim[0], alpha=0.2, color='gray')
+    # plt.axvspan(x1[0], x1[-1], alpha=0.2, color='gray')
     plt.xlabel('$ f $')
     plt.ylabel('$ S $')
-    plt.ylim((1e-1, 3e6))
+    # plt.xlim((5e-9, 5e-3))
+    plt.ylim((1e-5, 2e2))
 
     if save:
         for f in [figs[1]]:
@@ -520,4 +540,4 @@ if __name__ == '__main__':
     # fpptw_sde_psd()
     # power_law_pulse()
     # test_FPP()
-    test_compare()
+    test_compare(data=False)
