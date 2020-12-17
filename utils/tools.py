@@ -313,12 +313,16 @@ def ridge_plot_psd(data, fs, *args, xlabel=False, ylabel=False, labels=False, fi
         Xn = (signal - signal.mean()) / signal.std()
         ax_objs.append(fig.add_subplot(gs[i:i + 1, 0:]))
         # === Do actual plotting
-        fp, P_Xn = ssi.periodogram(Xn, fs=fs)
+        fp_, P_Xn = ssi.periodogram(Xn, fs=fs, return_onesided=False)
+        fp = fp_[fp_ > 0]
+        P_Xn = P_Xn[fp_ > 0]
         col[i] = next(clr)
         l = ax_objs[-1].loglog(fp[1:], P_Xn[1:], color=(col[0], col[1], col[2]), label='periodogram', alpha=.5)[0]
         l2.append(l)
         for nperseg in 2**np.array([17, 13]):
-            f, S_Xn = ssi.welch(Xn, fs=fs, nperseg=nperseg)
+            f_, S_Xn = ssi.welch(Xn, fs=fs, nperseg=nperseg, return_onesided=False)
+            f = f_[f_ > 0]
+            S_Xn = S_Xn[f_ > 0]
             col[i] = next(clr)
             ax_objs[-1].loglog(f[1:], S_Xn[1:], color=(col[0], col[1], col[2]), label='welch $2^{' + str(int(np.log2(nperseg))) + '}$', alpha=.6)
         w = 2 * np.pi * fp[1:]
@@ -536,7 +540,7 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        plt_type = 'log' if plt_type == 'semilogy' else plt_type
+        plt_type = 'log' if plt_type in ['semilogy', 'loglog'] else plt_type
         if plt_type != 'plot':
             ax.set_yscale(plt_type)
         ax.set_ylabel(ylabel)
