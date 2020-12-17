@@ -11,7 +11,7 @@ import slf
 import tools
 import plot_utils as pu
 
-sys.path.append('/home/een023/uit_scripts')
+sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
 from uit_scripts.plotting import figure_defs as fd
 import uit_scripts.stat_analysis as sa
 fd.set_rcparams_article_thickline(plt.rcParams)

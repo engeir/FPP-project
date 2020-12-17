@@ -25,7 +25,7 @@ import tick.plot as tp
 from scipy.signal import fftconvolve
 from sklearn.datasets import make_blobs
 
-sys.path.append('/home/een023/uit_scripts')
+sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
 from uit_scripts.misc import runge_kutta_SDE as rksde  # pylint: disable=E0401
 from uit_scripts.shotnoise import \
     gen_shot_noise as gsn  # pylint: disable=E0401

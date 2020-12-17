@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/Users/eirikenger/uit_scripts')
+sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
 
 import numpy as np
 import matplotlib.pyplot as plt
