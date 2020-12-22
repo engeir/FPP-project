@@ -11,7 +11,8 @@ import slf
 import tools
 import plot_utils as pu
 
-sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
+# sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
+# sys.path.append('/home/een023/resolve/uit_scripts')
 from uit_scripts.plotting import figure_defs as fd
 import uit_scripts.stat_analysis as sa
 fd.set_rcparams_article_thickline(plt.rcParams)
@@ -415,19 +416,19 @@ def test_compare(data=True, save=False):
     filename = 'final_g10'
     file = f'{data_path}{filename}_new.npz'
     rate = 'n-random'
-    tw_ = 'pareto'
+    tw_ = 'int'
     figs = ['sig', 'psd_new']
-    gamma = [1e1]
+    gamma = [1e0]
     dt = 1e-2
     if not data:
         pf = slf.FPPProcess()
         ps = slf.SDEProcess()
-        N = int(1e7)
+        N = int(1e6)
         snr = .0
         sig = []
         for g in gamma:
             pf.set_params(gamma=g, K=int(N * g * dt), dt=dt, TWkappa=.5 + g, mA=1.,
-                         tw=tw_, snr=snr, rate=rate, amp='exp', kern='1exp')
+                         tw=tw_, snr=snr, rate=rate, amp='exp', kern='1-exp')
             ps.set_params(gamma=g, K=int(N * g * dt), dt=dt)
 
             t, f, r = pf.create_realisation(fit=False)

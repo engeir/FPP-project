@@ -16,7 +16,8 @@ import tick.plot as tp
 from scipy.signal import fftconvolve
 from sklearn.datasets import make_blobs
 
-sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
+# sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
+# sys.path.append('/home/een023/resolve/uit_scripts')
 from uit_scripts.misc import runge_kutta_SDE as rksde  # pylint: disable=E0401
 from uit_scripts.shotnoise import \
     gen_shot_noise as gsn  # pylint: disable=E0401
@@ -229,8 +230,7 @@ class SDEProcess(Process):
         # x = rate_process(x0=1e-9, gamma=self.gamma)(timeline)  # pylint: disable=E1102,E1123,E1120
         # x = x.reshape((-1,))
 
-        x = rksde.SDE_SLE(self.dt, int(self.T / self.dt),
-                          x0=self.gamma, gamma=self.gamma, log=True)
+        x = rksde.SDE_SLE(self.dt, int(self.T / self.dt), x0=self.gamma, gamma=self.gamma, log=True)
         # x = (x - x.mean()) / x.std()
         t = np.linspace(0, self.T, int(self.T / self.dt))
         if fit:
@@ -297,15 +297,15 @@ class FPPProcess(Process):
     def __init__(self):
         super(FPPProcess, self).__init__()
         self.snr = .01
-        self.kern_dict = {'1exp': 0,
-                          '2exp': 1,
+        self.kern_dict = {'1-exp': 0,
+                          '2-exp': 1,
                           'lorentz': 2,
                           'gauss': 3,
                           'sech': 4,
                           'power': 5  # ,
                           #   '1exp2s': 6
                           }
-        self.kern = '1exp'
+        self.kern = '1-exp'
         self.rate = 'n-random'
         self.tw = 'exp'
         self.TWkappa = .5
@@ -556,16 +556,16 @@ class FPPProcess(Process):
         # Beware that seeds may yield strange results!
         # Equal seeds give correlated amplitude and waiting times.
         # prev. good seeds: (20, 31)
-        try:
-            t, _, response, amp, ta = gsn.make_signal(self.gamma, self.K, self.dt, mA=self.mA,
-                                                      eps=self.snr, ampta=True, dynamic=True,
-                                                      kerntype=self.kern_dict[self.kern], lam=.5,
-                                                      TWdist=self.tw, Adist=self.amp, TWkappa=self.TWkappa)
-        except Exception:
-            # amp, ta = self.create_forcing()
-            amp, ta = self.create_ampta(self.tw, self.rate)
-            t, response = gsn.signal_convolve(
-                amp, ta, self.T, self.dt, kernsize=2**17, kerntype=self.kern_dict[self.kern])
+        # try:
+        t, _, response, amp, ta = gsn.make_signal(self.gamma, self.K, self.dt, mA=self.mA,
+                                                    eps=self.snr, ampta=True, dynamic=True,
+                                                    kerntype=self.kern, lam=.5, rate=(self.rate, self.tw),
+                                                    TWdist='gam', Adist=self.amp, TWkappa=self.TWkappa)
+        # except Exception:
+        #     # amp, ta = self.create_forcing()
+        #     amp, ta = self.create_ampta(self.tw, self.rate)
+        #     t, response = gsn.signal_convolve(
+        #         amp, ta, self.T, self.dt, kernsize=2**17, kerntype=self.kern)
 
         ta_index = np.ceil(ta / self.dt).astype(int)
         forcing = np.zeros(t.size)

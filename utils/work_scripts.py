@@ -1,5 +1,6 @@
-import sys
-sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
+# import sys
+# sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
+# sys.path.append('/home/een023/resolve/uit_scripts')
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -542,11 +543,11 @@ def fpp_tw_psd(save=False):
 
 if __name__ == '__main__':
     # fpp_example()  # 1
-    # amplitude_dist()  # 2
+    amplitude_dist()  # 2
     # fpp_sde_realisations()  # 3
     # fpp_sde_real_L()  # 4
     # fpp_sde_psdpdf()  # 5
-    sde_tw(save=True)  # 6
+    # sde_tw()  # 6
     # Figure 7 is created in slf.py
     # fpp_tw_real()  # 8
     # fpp_tw_psd()  # 9
