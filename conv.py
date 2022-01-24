@@ -1,3 +1,7 @@
+#!/home/een023/.virtualenvs/uit_scripts/bin/python
+"""This script gives examples on how to deconvolve using synthetic forcing and forcing data.
+"""
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -37,7 +41,8 @@ def synthetic_forcing():
     gamma, K = .1, 10
     amp, ta, T = gsn.amp_ta(gamma, K)
     dt = 0.01
-    time, shot_n = gsn.signal_superposition(amp, ta, T, dt)
+    td = np.ones_like(amp)
+    time, shot_n = gsn.signal_superposition(amp, ta, T, dt, td)
 
     # Create volcanoes
     f = np.zeros(1000)
@@ -57,6 +62,7 @@ def synthetic_forcing():
     # r = fftconvolve(f, pt_s, 'same') + np.random.randn(1000) * 5e0 + 5
     t = time
     max_amp = np.max(amp)
+    # TODO: use instead the implemented gen_noise in uit_scripts...
     r = shot_n + np.random.randn(shot_n.size) * max_amp * .06 + max_amp * .06
     f = shot_n
 
@@ -82,16 +88,10 @@ def synthetic_spread():
     """
     # Create a signal (inverted temperature response) from an amplitude and arrival time array (volcanoes)
     # Average waiting time is 1 / gamma
-    gamma = 1
+    gamma = .1
     K = int(gamma * 100)
-    # amp, ta, T = gsn.amp_ta(gamma, K)
     dt = 0.01
     snr = .01
-    # === <abstracted to make_signal> ===
-    # t, shot_n = gsn.signal_superposition(amp, ta, T, dt)
-    # # Generate noise
-    # noise = gsn.gen_noise(gamma, snr, t, np.mean(amp), noise_seed=32)
-    # === </abstracted to make_signal> ===
 
     # Climate sensitivity / response function / pulse shape
     # pt_s = np.exp(- np.linspace(0, 200, 500)) / 1
@@ -102,7 +102,7 @@ def synthetic_spread():
     # r_height = .03
     # r = shot_n + noise[1]  # np.random.randn(shot_n.size) * max_amp * r_height + max_amp * r_height
     t, _, r, amp, ta = gsn.make_signal(
-        gamma, K, dt, eps=snr, ampta=True, dynamic=True, kerntype=0, lam=.5)
+        gamma, K, dt, eps=snr, ampta=True, dynamic=True, kerntype='1-exp', lam=.5)
     # Volcanic eruptions / delta pulses
     f = np.zeros_like(t)
     mask = find_nearest(t, ta)
@@ -125,6 +125,7 @@ def synthetic_spread():
     plt.subplot(3, 1, 2)
     # plt.plot(t, pt_s, 'r', label='Spread function')
     response, error = deconv(r, f, None, pts=False, time=t)
+    plt.plot(t, response)
     res_fit = response_fit(response, time=t)
     try:
         plt.plot(t, res_fit, 'r--', label='Response fit')
@@ -169,13 +170,13 @@ def deconv(r, f, p_s, iterations=100, pts=True, time=None, shift=False):
 def find_forcing():
     # === LOOK AT DATA ===
     # ctrl.files = ['T_orig', 'C_orig', 'T_yav', 'C_yav', 'scriptname']
-    ctrl = np.load('control_run.npz', mmap_mode='r')
+    ctrl = np.load('data/control_run.npz', mmap_mode='r')
 
     # sig_in.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
-    sig = np.load('temp_yav_O.npz', mmap_mode='r')
+    sig = np.load('data/temp_yav_O.npz', mmap_mode='r')
 
     # sig_out.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
-    sig_2 = np.load('temp_rep_I.npz', mmap_mode='r')
+    sig_2 = np.load('data/temp_rep_I.npz', mmap_mode='r')
 
     c = ctrl['C_yav']
     t = sig['T']
@@ -193,10 +194,10 @@ def find_forcing():
     plt.plot(t, pt_s, 'r', label='Spread function / Climate sensitivity')
     plt.legend()
     plt.subplot(4, 1, 2)
-    plt.plot(t, s_in, 'b--', label='sig_in / Forcing')
+    plt.plot(t, s_in, 'b--', label=r'sig\_in / Forcing')
     plt.legend()
     plt.subplot(4, 1, 4)
-    plt.plot(t, s_out, 'k', label='sig_out / Response')
+    plt.plot(t, s_out, 'k', label=r'sig\_out / Response')
     plt.legend()
 
     # === DECONVOLVE DATA ===
@@ -394,14 +395,13 @@ if __name__ == '__main__':
     # synthetic_forcing()
     # synthetic_spread()
     # find_forcing()
-    find_sensitivity()
-    # co2x2()
+    # find_sensitivity()
+    co2x2()
     # plot_temp('pure')
     # plot_temp('zeroed')
     # dm.look_at_txt(
     #     'data/glannual_anomaly_ts_Amon_NorESM1-M_abrupt4xCO2_r1i1p1_000101-015012.txt')
-    # a = dm.look_at_jones_mann()
-    # print(a[0])
-    # dm.plot_list_data('jones_mann')  # pages_ens
-    # response_fit(1)
+    a = dm.look_at_jones_mann()
+    print(a[0])
+    dm.plot_list_data('jones_mann')  # pages_ens
     plt.show()

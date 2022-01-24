@@ -1,7 +1,3 @@
-# import sys
-# sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
-# sys.path.append('/home/een023/resolve/uit_scripts')
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as grid_spec
@@ -31,7 +27,7 @@ def fpp_example(data=True, save=False):
     file = f'{data_path}{figs}.npz'
     p = slf.FPPProcess()
     if not data:
-        psde = slf.SDEProcess()
+        p = slf.SDEProcess()
         N = int(1e4)
         dt = 1e-2
         gamma = .1

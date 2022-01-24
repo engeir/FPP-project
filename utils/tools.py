@@ -388,6 +388,7 @@ def ridge_plot_psd(data, fs, *args, xlabel=False, ylabel=False, labels=False, fi
         gs.update(hspace=0.)
 
 
+# TODO: write this into a class?
 def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=None, y_scale=1., **kwargs):
     """Plot data in a ridge plot with fixed width and fixed height per ridge.
 
@@ -432,7 +433,7 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
     c = itertools.cycle(c)
     if 'xlim' in kwargs.keys():
         x_min, x_max = kwargs['xlim']
-    # TODO: only given T_max and dt (optional), calculate time / x axis
+    # TODO: only given T_max and dt (optional), calculate time / x axis. x axis arrays will not be needed
     # elif len([a for a in args if not isinstance(args, str)]) > 0:
     #     if len([a for a in args if not isinstance(args, str)]) == 1:
     #         T = [a for a in args if not isinstance(args, str)][0]

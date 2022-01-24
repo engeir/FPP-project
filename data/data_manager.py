@@ -1,3 +1,4 @@
+#!/home/een023/.virtualenvs/uit_scripts/bin/python
 """This script includes helper functions to read / load data from different txt files.
 """
 
@@ -107,18 +108,18 @@ def plot_list_data(the_type, v='M08'):
                     'v2(Ammann for 0-30S)',
                     'v3(Ammann for 30-90N)',
                     'v4(Ammann for 30-90S)',
-                    'Solar(Bertrand - $\mathrm{TSI_L}$)',
-                    'Volc(Bertrand - $\mathrm{VOLC_C}$)'])
+                    r'Solar(Bertrand - $\mathrm{TSI_L}$)',
+                    r'Volc(Bertrand - $\mathrm{VOLC_C}$)'])
     elif the_type == 'pages_ens':
         a = look_at_full_ensemble()
         x = a[1][:, 0]
         y = a[1][:, 1:]
         plt.plot(x, y)
-        plt.legend(['Cowtan \& Way instrumental target',
+        plt.legend(['Cowtan & Way instrumental target',
                     'Full ensemble median',
                     'Full ensemble 2.5th percentile',
                     'Full ensemble 97.5th percentile',
-                    'Cowtan \& Way instrumental target 31-year filtered',
+                    'Cowtan & Way instrumental target 31-year filtered',
                     '31-year filtered full ensemble median',
                     '31-year filtered full ensemble 2.5th percentile',
                     '31-year filtered full ensemble 97.5th percentile'])

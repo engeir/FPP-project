@@ -1,4 +1,5 @@
-"""Wrapper script for the uit-scripts library with limited support.
+"""Deprecated: use the slf.py script in the uit_scripts folder.
+Wrapper script for the uit-scripts library with limited support.
 Especially suited for creating time series realizations / processes
 with implementation of clustering methods for waiting times.
 """
