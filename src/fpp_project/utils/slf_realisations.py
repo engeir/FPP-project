@@ -1,19 +1,16 @@
-import sys
-
-import matplotlib.gridspec as grid_spec
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import numpy as np
-import plot_utils as pu
 import scipy.signal as ssi
-import slf
-import tools
+import fpp_project.utils.slf as slf
+import fpp_project.utils.tools as tools
 import uit_scripts.stat_analysis as sa
 from scipy.optimize import curve_fit
 
+from uit_scripts.plotting import figure_defs as fd
+
+# import matplotlib.ticker as mticker
 # sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
 # sys.path.append('/home/een023/resolve/uit_scripts')
-from uit_scripts.plotting import figure_defs as fd
 
 fd.set_rcparams_article_thickline(plt.rcParams)
 plt.rcParams["font.family"] = "DejaVu Sans"
@@ -101,13 +98,12 @@ def fpp_tw_dist(data: bool = True, save=False):
         )
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        fpp_e = f["fpp_e"]
-        fpp_p = f["fpp_p"]
-        fpp_c = f["fpp_c"]
-        fpp_t = f["fpp_t"]
-        # corr_t = f['corr_t']
-        del f
+        with np.load(file, allow_pickle=True) as f:
+            fpp_e = f["fpp_e"]
+            fpp_p = f["fpp_p"]
+            fpp_c = f["fpp_c"]
+            fpp_t = f["fpp_t"]
+            # corr_t = f['corr_t']
 
     # Calculate waiting time PDFs
     TW_e = []
@@ -139,8 +135,8 @@ def fpp_tw_dist(data: bool = True, save=False):
     lab = [fr"$\gamma = {g}$" for g in gamma]
     plt_type = "loglog"
     # y_scale = .4 in report
-    plt_type_c = "plot"
-    xlim_c = (-0.2, 0.2)
+    # plt_type_c = "plot"
+    # xlim_c = (-0.2, 0.2)
     # tools.ridge_plot_psd(fpp_vr, dt, xlabel='$ f $', ylabel='$ S $', labels=lab, figname=figs[0])
     tools.ridge_plot(
         TW_e,
@@ -221,7 +217,7 @@ def fpp_tw_pareto(data=True, save=False):
     if not data:
         p = slf.FPPProcess()
         ps = slf.SDEProcess()
-        N = int(5e5)  # 2e6 in saved arr
+        N = int(5e5)  # 2e in saved arr
         snr = 0.0
         sig = []
         force = []
@@ -239,7 +235,9 @@ def fpp_tw_pareto(data=True, save=False):
         )
         ps.set_params(gamma=gamma, K=int(N * gamma * dt), dt=dt)
 
-        t, f, r, a, ta = p.create_realisation(fit=False, full=True)
+        out = p.create_realisation(fit=False, full=True)
+        out = np.r_[out, np.zeros(5)]
+        t, f, r, a, ta = out[0], out[1], out[2], out[3], out[4]
         s = (t, r)
         trw = np.diff(ta)
         TW = np.sort(trw)[::-1]
@@ -260,12 +258,11 @@ def fpp_tw_pareto(data=True, save=False):
         # np.savez(file, sig=sig, force=force, amp=amp, tw=tw)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        sig = f["sig"]
-        # force = f['force']
-        # amp = f['amp']
-        # tw = list(f['tw'])
-        del f
+        with np.load(file, allow_pickle=True) as f:
+            sig = f["sig"]
+            # force = f['force']
+            # amp = f['amp']
+            # tw = list(f['tw'])
 
     # # Create histogram of waiting times
     # for _ in range(len(tw)):
@@ -323,7 +320,8 @@ def fpptw_sde_real(data=True, save=False):
             pf.set_params(gamma=g, K=int(N * g * dt), dt=dt, snr=snr, rate=rate, tw=tw)
             ps.set_params(gamma=g, K=int(N * g * dt), dt=dt)
 
-            s1, _, s2 = pf.create_realisation(fit=False)
+            out = pf.create_realisation(fit=False)
+            s1, s2 = out[0], out[-1]
             if g == 10.0:
                 s2[:100] = np.nan
             s = (s1, s2)
@@ -335,9 +333,9 @@ def fpptw_sde_real(data=True, save=False):
         np.savez(file, fpp=fpp, sde=sde)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        fpp = f["fpp"]
-        sde = f["sde"]
+        with np.load(file, allow_pickle=True) as f:
+            fpp = f["fpp"]
+            sde = f["sde"]
 
     plt.rcParams["lines.linewidth"] = 0.4
     lab = [fr"$\gamma = {g}$" for g in gamma]
@@ -364,9 +362,9 @@ def fpptw_sde_psd(data=True, save=False):
     dt = 1e-2
 
     print(f"Loading data from {file}")
-    f = np.load(file, allow_pickle=True)
-    fpp = f["fpp"]
-    sde = f["sde"]
+    with np.load(file, allow_pickle=True) as f:
+        fpp = f["fpp"]
+        sde = f["sde"]
 
     lab = [fr"$\gamma = {g}$" for g in gamma]
     tools.ridge_plot_psd(
@@ -459,7 +457,9 @@ def test_FPP(data=True, save=False):
                 kern="1exp",
             )
 
-            t, f, r, a, ta = p.create_realisation(fit=False, full=True)
+            out = p.create_realisation(fit=False, full=True)
+            out = np.r_[out, np.zeros(5)]
+            t, f, r, a, ta = out[0], out[1], out[2], out[3], out[4]
             s = (t, r)
             TW = np.diff(ta)
             sig.append(s)
@@ -470,12 +470,11 @@ def test_FPP(data=True, save=False):
         # np.savez(file, sig=sig, force=force, amp=amp, tw=tw)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        sig = f["sig"]
-        # force = f['force']
-        # amp = f['amp']
-        # tw = list(f['tw'])
-        del f
+        with np.load(file, allow_pickle=True) as f:
+            sig = f["sig"]
+            # force = f['force']
+            # amp = f['amp']
+            # tw = list(f['tw'])
 
     # # Create histogram of waiting times
     # for _ in range(len(tw)):
@@ -539,24 +538,25 @@ def test_compare(data=True, save=False):
             )
             ps.set_params(gamma=g, K=int(N * g * dt), dt=dt)
 
-            t, f, r = pf.create_realisation(fit=False)
+            out = pf.create_realisation(fit=False)
+            t, f, r = out[0], out[1], out[-1]
             s = (t, r)
             sig.append(s)
-            t, r = ps.create_realisation(fit=False)
+            out = ps.create_realisation(fit=False)
+            t, r = out[0], out[-1]
             s = (t, r)
             sig.append(s)
 
         # np.savez(file, sig=sig)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        tw_lim = np.load(
+        with np.load(file, allow_pickle=True) as f:
+            sig = f["sig"]
+        with np.load(
             f"/home/een023/Documents/work/FPP_SOC_Chaos/report/data/{filename}_minmax.npz",
             allow_pickle=True,
-        )
-        tw_lim = (tw_lim["tw_min"], tw_lim["tw_max"])
-        sig = f["sig"]
-        del f
+        ) as tw_lim:
+            tw_lim = (tw_lim["tw_min"], tw_lim["tw_max"])
 
     # Create PSD
     psd = []
@@ -587,7 +587,8 @@ def test_compare(data=True, save=False):
         mask = x < 5e-2
         x1 = x[mask]
         y1 = y[mask]
-        popt, _ = curve_fit(tools.pow_func, x1, y1)
+        out = curve_fit(tools.pow_func, x1, y1)
+        popt = out[0]
         y1 = tools.pow_func(x1, *popt)  # * 5
         y_pos.append(y1[(np.abs(x1 - x_pos.pop())).argmin()] * 1.4)
         psd.append((x1, y1))
@@ -620,9 +621,9 @@ def test_compare(data=True, save=False):
     g_str = filename[7:]
     g_str = g_str[0] + "." + g_str[1:] if g_str[0] == "0" else g_str
     plt.text(2e-2, 1.6e-4, fr"$ \gamma={float(g_str)} $", size=13)
-    f = mticker.ScalarFormatter(useOffset=False, useMathText=True)
-    g = lambda x, pos: "{}".format(f._formatSciNotation("%1.3e" % x))
-    fmt = mticker.FuncFormatter(g)
+    # f = mticker.ScalarFormatter(useOffset=False, useMathText=True)
+    # g = lambda x, _: "{}".format(f._formatSciNotation("%1.3e" % x))
+    # fmt = mticker.FuncFormatter(g)
     # plt.text(1e-5, 2e-1, f'$ \\tau_{{\mathrm{{w}},\min}}={fmt(tw_lim[0])} $')
     # plt.text(1e-5, 5e-2, f'$ \\tau_{{\mathrm{{w}},\max}}={fmt(tw_lim[1])} $')
     for x_p, y_p, pp in zip([3e-1, 1e-5], y_pos, power):

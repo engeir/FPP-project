@@ -7,7 +7,6 @@ import numpy as np
 import scipy.integrate as si
 import scipy.optimize as scop
 import scipy.signal as ssi
-from scipy import stats
 from uit_scripts.shotnoise import gen_shot_noise as gsn
 
 
@@ -67,9 +66,10 @@ def optimize(x, y, pen=False):
     zeros = np.zeros_like(y[:p])
     x = x[p:] - x[p]
     y = y[p:]
-    sig_cov, _ = scop.curve_fit(
+    out = scop.curve_fit(
         func, x, y, p0=[1, 0.5, 1, 1], bounds=([0, 0, 0, 0], [1, 1, 100, 100])
     )
+    sig_cov = out[0]
     sig_fit = one_s_two_exp(x, *sig_cov)
     print("Integral of pulse function = %.3e" % si.simps(sig_fit, x))
     return np.r_[zeros, sig_fit]
@@ -169,8 +169,12 @@ def make_signal_zeropad(
             tol=tol,
         )
     else:
+        # FIXME: missing duration time? Did this use to work?
+        td = gsn.td_dist(
+            K, TDdist=TDdist, seedTD=seedTD, TDkappa=TDkappa, TDparW=TDparW
+        )
         T, S = gsn.signal_superposition(
-            A, ta, Tend, dt, kerntype=kerntype, lam=lam, dkern=dkern
+            A, ta, Tend, dt, td, kerntype=kerntype, lam=lam, dkern=dkern
         )
 
     if dynamic or additive:

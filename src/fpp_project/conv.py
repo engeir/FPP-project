@@ -155,12 +155,12 @@ def deconv(r, f, p_s, iterations=100, pts=True, time=None, shift=False):
     else:
         t = np.linspace(0, 10, r.shape[0])
     if pts:
-        res, err = dpy.RL_gauss_deconvolve(r, p_s, iterations, shift=shift)
+        res, err = dpy.RL_gauss_deconvolve(r, p_s, iterations)
         plt.subplot(4, 1, 3)
         plt.plot(t, res, "b--", label=f"Deconvolved, shift = {shift}")
         plt.legend()
     else:
-        res, err = dpy.RL_gauss_deconvolve(r, f, iterations, shift=shift)
+        res, err = dpy.RL_gauss_deconvolve(r, f, iterations)
         # plt.plot(t, res, 'k', label=f'Deconvolved, shift = {shift}')
 
     return res, err
@@ -169,18 +169,17 @@ def deconv(r, f, p_s, iterations=100, pts=True, time=None, shift=False):
 def find_forcing():
     # === LOOK AT DATA ===
     # ctrl.files = ['T_orig', 'C_orig', 'T_yav', 'C_yav', 'scriptname']
-    # ctrl = np.load("data/control_run.npz", mmap_mode="r")
+    # with np.load("data/control_run.npz", mmap_mode="r") as ctrl:
+    #     c = ctrl["C_yav"]
 
     # sig_in.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
-    sig = np.load("data/temp_yav_O.npz", mmap_mode="r")
+    with np.load("data/temp_yav_O.npz", mmap_mode="r") as sig:
+        t = sig["T"]
+        s_in = sig["I"]
+        s_out = sig["O"]
 
     # sig_out.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
     # sig_2 = np.load("data/temp_rep_I.npz", mmap_mode="r")
-
-    # c = ctrl["C_yav"]
-    t = sig["T"]
-    s_in = sig["I"]
-    s_out = sig["O"]
 
     plt.figure(figsize=(9, 6))
     plt.subplot(4, 1, 1)
@@ -210,17 +209,19 @@ def find_forcing():
 def find_sensitivity():
     # === LOOK AT DATA ===
     # ctrl.files = ['T_orig', 'C_orig', 'T_yav', 'C_yav', 'scriptname']
-    # ctrl = np.load("data/control_run.npz", mmap_mode="r")
+    # with np.load("data/control_run.npz", mmap_mode="r") as ctrl:
+    #     c = ctrl['C_yav']
+
     # sig_in.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
-    sig = np.load("data/temp_yav_O.npz", mmap_mode="r")
+    with np.load("data/temp_yav_O.npz", mmap_mode="r") as sig:
+        t = sig["T"]
+        s_in = sig["I"]
+        s_out = sig["O"]
+
     # This one is very noisy. Use the above instead.
     # sig_out.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
     # sig_2 = np.load("data/temp_rep_I.npz", mmap_mode="r")
 
-    # c = ctrl['C_yav']
-    t = sig["T"]
-    s_in = sig["I"]
-    s_out = sig["O"]
     # === DECONVOLVE DATA ===
     # d_response, error = deconv(s_out, s_in, None, pts=False, time=t, iterations=[414, 1000])
     d_response, _ = dpy.RL_gauss_deconvolve(s_out, s_in, [414, 995])
@@ -354,10 +355,10 @@ def co2x2():
     time = np.linspace(-100, 2900, 3000)
     forcing = np.heaviside(time, 1) * 2
 
-    sig = np.load("data/temp_yav_O.npz", mmap_mode="r")
-    t = sig["T"]
-    s_in = sig["I"]
-    s_out = sig["O"]
+    with np.load("data/temp_yav_O.npz", mmap_mode="r") as sig:
+        t = sig["T"]
+        s_in = sig["I"]
+        s_out = sig["O"]
 
     plt.figure(figsize=(9, 6))
     # gs = gridspec.GridSpec(3, 2)
@@ -386,8 +387,8 @@ def plot_temp(version):
     a = dm.look_at_jones_mann()
     x = a[1][:, 0]
     y = a[1][:, 4]
-    file = np.load("response_yav_O.npz", mmap_mode="r")
-    res = file["res"]
+    with np.load("response_yav_O.npz", mmap_mode="r") as file:
+        res = file["res"]
     res = res.reshape((-1,))
     if version == "zeroed":
         res[: int(len(res) / 2) - 1] = 0

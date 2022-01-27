@@ -4,17 +4,14 @@ Especially suited for creating time series realizations / processes
 with implementation of clustering methods for waiting times.
 """
 
-import sys
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 
 import matplotlib.pyplot as plt
 import numpy as np
 import sdepy
 import tick.base as tb
 import tick.hawkes as th
-import tick.plot as tp
-import tools
-from matplotlib import collections as matcoll
+import fpp_project.utils.tools as tools
 from scipy.signal import fftconvolve
 from sklearn.datasets import make_blobs
 
@@ -33,7 +30,7 @@ class Realisation:
             self.p = SDEProcess()
         else:
             self.p = FPPProcess()
-        self.arr = None
+        self.arr: tuple
 
     def __update(self):
         self.arr = self.p.create_realisation()
@@ -77,7 +74,6 @@ class Realisation:
         assert (
             False
         ), f'The argument "{the_array}" did not match any of the possible return values.'
-        return None
 
     def plotter(self):
         self.warning_no_array()
@@ -95,15 +91,17 @@ class Process(ABC):
         ABC {class} -- abstract base class that all Process objects inherit from
     """
 
+    process: str
+
     def __init__(self):
         self.gamma = 1.0
         self.K = 1000
         self.dt = 0.01
         self.__update_params()
 
-    @abstractproperty
-    def process(self) -> str:
-        """The type of the intregrand implementation."""
+    # @abstractproperty
+    # def process(self) -> str:
+    #     """The type of the intregrand implementation."""
 
     def set_params(self, **kwargs):
         """Handles how the parameters are set."""
@@ -326,7 +324,6 @@ class FPPProcess(Process):
         self.mA = 1.0
 
     def create_rate(self, version, k_length=True, tw=False):
-        assert version in ["ou", "n-random"]
         # Use an Ornstein-Uhlenbeck process as the rate
         if version == "ou":
             # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian motions. 2018. hal-01919754
@@ -341,12 +338,12 @@ class FPPProcess(Process):
             # mu: long-term average position = 1.
             # sigma: volatility parameter = 1.
             size = self.K if k_length else int(1e5)
-            timeline = np.linspace(0.0, 1.0, size)
+            # timeline = np.linspace(0.0, 1.0, size)
             t = np.linspace(0.0, self.T, size)
-            rate = rate_process(x0=1.0, k=0.01, sigma=0.01)(
-                t
-            )  # pylint: disable=E1102,E1123,E1120
+            # fmt: off
+            rate = rate_process(x0=1.0, k=0.01, sigma=0.01)(t)  # pylint: disable=E1102,E1123,E1120
             # rate = rate_process(x0=1., k=.01, sigma=.01)(timeline)  # pylint: disable=E1102,E1123,E1120
+            # fmt: on
             # rate = rate.reshape((-1,))
             # rate *= self.gamma / rate.mean()
             rate = rate.reshape((-1,))
@@ -362,6 +359,8 @@ class FPPProcess(Process):
             # rate = prob.gamma(shape=1., scale=scale, size=size)
             rate = prob.exponential(scale=scale, size=size)
             t = np.linspace(0, np.sum(1 / rate), size)
+        else:
+            raise KeyError(f"'version' must be 'ou' or 'n-random', not {version}")
         if any(rate < 0):
             print("Warning: Rate process includes negatives. Computing abs(rate).")
             rate = abs(rate)
@@ -448,7 +447,7 @@ class FPPProcess(Process):
             # # PLOT RATE AND ESTIMATED ARRIVAL TIMES
             self.K = len(ta)
             amp, _, _ = gsn.amp_ta(self.gamma, self.K)
-        return amp, ta
+            return amp, ta
 
     def create_forcing(self):
         """
@@ -458,14 +457,14 @@ class FPPProcess(Process):
         kinds = ["cluster", "var_rate", "cox", "cox_var_rate", "tick"]
         assert self.tw in kinds, f'The "kind" must be on of {kinds}, not {self.tw}'
         if self.tw == "cluster":
-            x, _ = make_blobs(
+            out = make_blobs(
                 n_samples=self.K,
                 centers=100,
                 cluster_std=0.1,
                 n_features=1,
                 random_state=0,
             )
-            x = x.reshape((-1,))
+            x = out[0].reshape((-1,))
             # TW = np.insert(x, 0, 0.)
             # ta = np.cumsum(TW[:-1])
             # self.T = ta[-1] + TW[-1]
@@ -571,7 +570,9 @@ class FPPProcess(Process):
 
     @staticmethod
     def fit_pulse(t, forcing, response):
-        pulse, error = dm.RL_gauss_deconvolve(response, forcing, 600, shift=None)
+        # Shift removed. Not needed?
+        pulse, error = dm.RL_gauss_deconvolve(response, forcing, 600)
+        # pulse, error = dm.RL_gauss_deconvolve(response, forcing, 600, shift=None)
         pulse = pulse.reshape((-1,))
         pulse_fit = tools.optimize(t, np.copy(pulse), pen=False)
         response_fit = fftconvolve(forcing, pulse_fit, mode="same")
@@ -620,18 +621,16 @@ class FPPProcess(Process):
 
     def get_tw(self, parameter=None):
         if parameter is None:
-            make = False
-            amp, ta = self.create_realisation(fit=False, ampta=True)
+            out = self.create_realisation(fit=False, ampta=True)
+            ta = out[1]
         else:
-            make = True
+            t = parameter[0]
+            f = parameter[1]
+            ta = t[f > 0]
             if isinstance(parameter, np.ndarray) and not len(parameter) == 2:
                 raise TypeError(
                     '"plot_tw" only works if both the time and forcing arrays are sent in'
                 )
-        if make:
-            t = parameter[0]
-            f = parameter[1]
-            ta = t[f > 0]
         tw = np.diff(ta)
         # tw = np.sort(trw)[::-1]
         return tw, np.arange(len(tw))
