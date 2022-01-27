@@ -1,20 +1,17 @@
-#!/home/een023/.virtualenvs/uit_scripts/bin/python
-"""This script gives examples on how to deconvolve using synthetic forcing and forcing data.
+"""Examples on how to deconvolve using synthetic forcing and forcing data.
 """
 
-import numpy as np
+import fpp_project.data.data_manager as dm
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
+import scipy.integrate as si
+import scipy.optimize as scop
 
 # import matplotlib.gridspec as gridspec
 from scipy.signal import fftconvolve
-import scipy.optimize as scop
-import scipy.integrate as si
-
-from uit_scripts.stat_analysis import deconv_methods as dpy
 from uit_scripts.shotnoise import gen_shot_noise as gsn
-import data.data_manager as dm
-
+from uit_scripts.stat_analysis import deconv_methods as dpy
 
 plt.rcParams["axes.grid"] = True
 # Customize matplotlib
@@ -37,7 +34,7 @@ def find_nearest(array, value):
 
 
 def synthetic_forcing():
-    """Try to estimate the amplitude and arrival times based on an assumed known pulse shape."""
+    """Estimate the amplitude and arrival times based on an assumed known pulse shape."""
     t = np.linspace(0, 10, 1000)
 
     gamma, K = 0.1, 10
@@ -87,8 +84,8 @@ def synthetic_forcing():
 
 def synthetic_spread():
     """Estimate the pulse shape based on known amplitudes and arrival times."""
-    # Create a signal (inverted temperature response) from an amplitude and arrival time array (volcanoes)
-    # Average waiting time is 1 / gamma
+    # Create a signal (inverted temperature response) from an amplitude and arrival time
+    # array (volcanoes). Average waiting time is 1 / gamma.
     gamma = 0.1
     K = int(gamma * 100)
     dt = 0.01
@@ -172,15 +169,15 @@ def deconv(r, f, p_s, iterations=100, pts=True, time=None, shift=False):
 def find_forcing():
     # === LOOK AT DATA ===
     # ctrl.files = ['T_orig', 'C_orig', 'T_yav', 'C_yav', 'scriptname']
-    ctrl = np.load("data/control_run.npz", mmap_mode="r")
+    # ctrl = np.load("data/control_run.npz", mmap_mode="r")
 
     # sig_in.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
     sig = np.load("data/temp_yav_O.npz", mmap_mode="r")
 
     # sig_out.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
-    sig_2 = np.load("data/temp_rep_I.npz", mmap_mode="r")
+    # sig_2 = np.load("data/temp_rep_I.npz", mmap_mode="r")
 
-    c = ctrl["C_yav"]
+    # c = ctrl["C_yav"]
     t = sig["T"]
     s_in = sig["I"]
     s_out = sig["O"]
@@ -213,12 +210,12 @@ def find_forcing():
 def find_sensitivity():
     # === LOOK AT DATA ===
     # ctrl.files = ['T_orig', 'C_orig', 'T_yav', 'C_yav', 'scriptname']
-    ctrl = np.load("data/control_run.npz", mmap_mode="r")
+    # ctrl = np.load("data/control_run.npz", mmap_mode="r")
     # sig_in.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
     sig = np.load("data/temp_yav_O.npz", mmap_mode="r")
     # This one is very noisy. Use the above instead.
     # sig_out.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
-    sig_2 = np.load("data/temp_rep_I.npz", mmap_mode="r")
+    # sig_2 = np.load("data/temp_rep_I.npz", mmap_mode="r")
 
     # c = ctrl['C_yav']
     t = sig["T"]
@@ -226,7 +223,7 @@ def find_sensitivity():
     s_out = sig["O"]
     # === DECONVOLVE DATA ===
     # d_response, error = deconv(s_out, s_in, None, pts=False, time=t, iterations=[414, 1000])
-    d_response, error = dpy.RL_gauss_deconvolve(s_out, s_in, [414, 995])
+    d_response, _ = dpy.RL_gauss_deconvolve(s_out, s_in, [414, 995])
 
     for response in d_response.T:
         plt.figure(figsize=(9, 6))
@@ -320,21 +317,23 @@ def response_fit(response, time=None):
     # mask = int(len(signal) * .02)
 
     # Best fit according two a 1-sided double exponential
-    sig_cov, _ = scop.curve_fit(
+    out = scop.curve_fit(
         one_s_two_exp,
         t,
         signal,
         p0=[1, 0.5, 1, 1],
         bounds=([0, 0, 0, 0], [1, 1, np.inf, np.inf]),
     )
+    sig_cov = out[0]
     # Best constrained fit according two a 1-sided double exponential and integral = 1
-    popt2, _ = scop.curve_fit(
+    out = scop.curve_fit(
         FuncPen,
         t,
         signal,
         p0=[1, 0.5, 1, 1],
         bounds=([0, 0, 0, 0], [1, 1, np.inf, np.inf]),
     )
+    popt2 = out[0]
     print(sig_cov)
     print(popt2)
     # sig_fit = one_s_two_exp(t, .9, .9)

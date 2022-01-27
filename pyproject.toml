@@ -12,6 +12,7 @@ scipy = "^1.7.3"
 numpy = "^1.22.1"
 sdepy = "^1.2.0"
 scikit-learn = "^1.0.2"
+uit-scripts = { path = "../../../../programs/uit_scripts", develop = true }
 
 [tool.poetry.dev-dependencies]
 black = "^21.12b0"

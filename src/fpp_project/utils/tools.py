@@ -34,7 +34,7 @@ def one_s_two_exp(t, c, d, amp, sc):
         np.ndarray: exponential function of t
     """
     term1 = c * np.exp(-2 * np.abs(t) * sc / (1 - d))
-    term2 = (1 - c) * np.exp(- 2 * np.abs(t) * sc / (1 + d))
+    term2 = (1 - c) * np.exp(-2 * np.abs(t) * sc / (1 + d))
     return amp * (term1 + term2) / (1 + d - 2 * c * d)
 
 
@@ -43,9 +43,9 @@ def FuncPen(x, a0, a1, a2, a3):
     sig_fit = one_s_two_exp(x, a0, a1, a2, a3)
     integral = si.simps(sig_fit, x)
     # integral = si.quad(one_s_two_exp, - np.inf, np.inf, args=(a0, a1, a2, a3))[0]
-    penalization = abs(1. - integral) * 10000
+    penalization = abs(1.0 - integral) * 10000
     term1 = a0 * np.exp(-2 * np.abs(x) * a3 / (1 - a1))
-    term2 = (1 - a0) * np.exp(- 2 * np.abs(x) * a3 / (1 + a1))
+    term2 = (1 - a0) * np.exp(-2 * np.abs(x) * a3 / (1 + a1))
     # amp = 1
     return a2 * (term1 + term2) / (1 + a1 - 2 * a0 * a1) + penalization
 
@@ -67,22 +67,24 @@ def optimize(x, y, pen=False):
     zeros = np.zeros_like(y[:p])
     x = x[p:] - x[p]
     y = y[p:]
-    sig_cov, _ = scop.curve_fit(func, x, y, p0=[1, 0.5, 1, 1], bounds=([0, 0, 0, 0], [1, 1, 100, 100]))
+    sig_cov, _ = scop.curve_fit(
+        func, x, y, p0=[1, 0.5, 1, 1], bounds=([0, 0, 0, 0], [1, 1, 100, 100])
+    )
     sig_fit = one_s_two_exp(x, *sig_cov)
-    print('Integral of pulse function = %.3e' % si.simps(sig_fit, x))
+    print("Integral of pulse function = %.3e" % si.simps(sig_fit, x))
     return np.r_[zeros, sig_fit]
 
 
 def exp_func(x, a, b):
-    return a * np.exp(- b * x)
+    return a * np.exp(-b * x)
 
 
 def ray_func(x, a, b):
-    return a * x * np.exp(- b * x**2 / 2)
+    return a * x * np.exp(-b * x ** 2 / 2)
 
 
 def pow_func(x, a, b):
-    return a * x**(- b)
+    return a * x ** (-b)
 
 
 def find_nearest(array, value):
@@ -94,10 +96,29 @@ def find_nearest(array, value):
 
 
 def make_signal_zeropad(
-        gamma, K, dt, Kdist=False, mA=1., kappa=0.5, TWkappa=0, ampta=False,
-        TWdist='exp', Adist='exp', seedTW=None, seedA=None, convolve=True,
-        dynamic=False, additive=False, eps=0.1, noise_seed=None,
-        kernsize=2**11, kerntype=0, lam=0.5, dkern=False, tol=1e-5):
+    gamma,
+    K,
+    dt,
+    Kdist=False,
+    mA=1.0,
+    kappa=0.5,
+    TWkappa=0,
+    ampta=False,
+    TWdist="exp",
+    Adist="exp",
+    seedTW=None,
+    seedA=None,
+    convolve=True,
+    dynamic=False,
+    additive=False,
+    eps=0.1,
+    noise_seed=None,
+    kernsize=2 ** 11,
+    kerntype=0,
+    lam=0.5,
+    dkern=False,
+    tol=1e-5,
+):
     """
     Use:
         make_signal(
@@ -118,36 +139,59 @@ def make_signal_zeropad(
     All time is normalized by duration time.
     """
     A, ta, Tend = gsn.amp_ta(
-        gamma, K, Kdist=Kdist, mA=mA, kappa=kappa, TWkappa=TWkappa,
-        TWdist=TWdist, Adist=Adist, seedTW=seedTW, seedA=seedA)
+        gamma,
+        K,
+        Kdist=Kdist,
+        mA=mA,
+        kappa=kappa,
+        TWkappa=TWkappa,
+        TWdist=TWdist,
+        Adist=Adist,
+        seedTW=seedTW,
+        seedA=seedA,
+    )
 
     # Lets make the first and last 10 percent zeros.
-    mask10p = (Tend * .1 < ta) & (ta < Tend * .9)
+    mask10p = (Tend * 0.1 < ta) & (ta < Tend * 0.9)
     ta = ta[mask10p]
     A = A[mask10p]
 
     if convolve:
         T, S = gsn.signal_convolve(
-            A, ta, Tend, dt,
-            kernsize=kernsize, kerntype=kerntype,
-            lam=lam, dkern=dkern, tol=tol)
+            A,
+            ta,
+            Tend,
+            dt,
+            kernsize=kernsize,
+            kerntype=kerntype,
+            lam=lam,
+            dkern=dkern,
+            tol=tol,
+        )
     else:
         T, S = gsn.signal_superposition(
-            A, ta, Tend, dt,
-            kerntype=kerntype, lam=lam, dkern=dkern)
+            A, ta, Tend, dt, kerntype=kerntype, lam=lam, dkern=dkern
+        )
 
-    if (dynamic or additive):
+    if dynamic or additive:
         X = gsn.gen_noise(
-            gamma, eps, T, mA=mA,
-            kernsize=kernsize, kerntype=kerntype,
-            lam=lam, dkern=dkern, tol=tol,
-            noise_seed=noise_seed)
+            gamma,
+            eps,
+            T,
+            mA=mA,
+            kernsize=kernsize,
+            kerntype=kerntype,
+            lam=lam,
+            dkern=dkern,
+            tol=tol,
+            noise_seed=noise_seed,
+        )
 
     res = (T, S)
     if dynamic:
-        res += (S+X[0],)
+        res += (S + X[0],)
     if additive:
-        res += (S+X[1],)
+        res += (S + X[1],)
     if ampta:
         res += (A, ta)
     return res
@@ -160,10 +204,10 @@ def est_corr(signal):
 
     # signal = AR1(N, phi, X0)
 
-    Xn = (signal-signal.mean())/signal.std()
+    Xn = (signal - signal.mean()) / signal.std()
 
-    R = ssi.correlate(Xn, Xn, mode='full')
-    n = np.arange(- (signal.size-1), signal.size)
+    R = ssi.correlate(Xn, Xn, mode="full")
+    n = np.arange(-(signal.size - 1), signal.size)
 
     # Biased correlation function (introduces systematic errors)
     Rb = R / signal.size
@@ -172,12 +216,12 @@ def est_corr(signal):
 
     # Rtrue = phi**np.abs(n)
 
-    plt.figure('AC')
-    plt.plot(n, Rub, label='unbiased')
-    plt.plot(n, Rb, label='biased')
+    plt.figure("AC")
+    plt.plot(n, Rub, label="unbiased")
+    plt.plot(n, Rb, label="biased")
     # plt.plot(n, Rtrue, 'k:', label='true R')
-    plt.xlabel('n')
-    plt.ylabel('R_X(n)')
+    plt.xlabel("n")
+    plt.ylabel("R_X(n)")
     plt.legend()
 
 
@@ -192,37 +236,51 @@ def psd(signal, *args, fs=1e-2, new_fig=True):
         new_fig (bool, optional): a new figure is created, set to False
             if you want to just call the plot commands. Defaults to True.
     """
-    c = ['b', 'r', 'g', 'magenta', 'yellow', 'royalblue',
-         'chartreuse', 'firebrick', 'darkorange']
+    c = [
+        "b",
+        "r",
+        "g",
+        "magenta",
+        "yellow",
+        "royalblue",
+        "chartreuse",
+        "firebrick",
+        "darkorange",
+    ]
     c = itertools.cycle(c)
     Xn = (signal - signal.mean()) / signal.std()
     # Periodogram - simple calculation
     fp, P_Xn = ssi.periodogram(Xn, fs=fs)
     if len(args) == 0:
-        args = ['loglog']
+        args = ["loglog"]
     for kind in args:
         if new_fig or len(args) > 1:
             plt.figure()
-            plt.title(f'psd - {kind}')
+            plt.title(f"psd - {kind}")
         plot = getattr(plt, kind)
-        al = .5
-        plot(fp[1:], P_Xn[1:], f'{next(c)}', label='periodogram', alpha=al)
+        al = 0.5
+        plot(fp[1:], P_Xn[1:], f"{next(c)}", label="periodogram", alpha=al)
 
         # Using the Welch method - window size (nperseg) is most important for us.
-        for nperseg in 2**np.array([13, 10]):
-            if al < 1.:
-                al += .2
+        for nperseg in 2 ** np.array([13, 10]):
+            if al < 1.0:
+                al += 0.2
             f, S_Xn = ssi.welch(Xn, fs=fs, nperseg=nperseg)
 
-            plot(f[1:], S_Xn[1:], f'{next(c)}', label='welch $2^{' +
-                 str(int(np.log2(nperseg))) + '}$', alpha=al)
+            plot(
+                f[1:],
+                S_Xn[1:],
+                f"{next(c)}",
+                label="welch $2^{" + str(int(np.log2(nperseg))) + "}$",
+                alpha=al,
+            )
 
         # plt.loglog(fp, (1-phi**2)/(1+phi**2-2*phi *
         #                            np.cos(2*np.pi*fp)), 'k:', label='true')
         w = 2 * np.pi * fp[1:]
-        t_d = (1 / fs)**2
-        lor = 2 * t_d / (1 + (t_d * w)**2)
-        plot(fp[1:], lor, 'k--', label='Lorentz spectrum', alpha=.8)
+        t_d = (1 / fs) ** 2
+        lor = 2 * t_d / (1 + (t_d * w) ** 2)
+        plot(fp[1:], lor, "k--", label="Lorentz spectrum", alpha=0.8)
         # f_pow = fp[1:]**(- 1 / 2) * 2
         # plot(fp[1:], f_pow, label='$f^{-1/2}$')
         # f_pow = fp[1:]**(- 2) * 1e-3
@@ -230,8 +288,8 @@ def psd(signal, *args, fs=1e-2, new_fig=True):
         # f_pow = fp[1:]**0 * 1e3
         # plot(fp[1:], f_pow, label='$f^0$')
 
-        plt.xlabel('$f$')
-        plt.ylabel('PSD')
+        plt.xlabel("$f$")
+        plt.ylabel("PSD")
         # plt.legend()
 
 
@@ -248,21 +306,21 @@ def pdf(signal, *args, new_fig=True):
     """
     # bins = np.linspace(-5, 5, 30)
     histogram, bins = np.histogram(signal, bins=10, density=True)
-    bin_centers = 0.5*(bins[1:] + bins[:-1])
+    bin_centers = 0.5 * (bins[1:] + bins[:-1])
     # Compute the PDF on the bin centers from scipy distribution object
     # norm_pdf = stats.norm.pdf(bin_centers)
 
     if len(args) == 0:
-        args = ['semilogy']
+        args = ["semilogy"]
     for kind in args:
         if new_fig or len(args) > 1:
             plt.figure()
-            plt.title(f'pdf - {kind}')
+            plt.title(f"pdf - {kind}")
         plot = getattr(plt, kind)
         plot(bin_centers, histogram, label="Histogram of samples")
         # plot(bin_centers, norm_pdf, label="PDF")
-        plt.xlabel('$f$')
-        plt.ylabel('PDF')
+        plt.xlabel("$f$")
+        plt.ylabel("PDF")
         plt.legend()
 
 
@@ -274,13 +332,15 @@ def est_pdf(signal):
     """
     # bins = np.linspace(-5, 5, 30)
     histogram, bins = np.histogram(signal, bins=10, density=True)
-    bin_centers = 0.5*(bins[1:] + bins[:-1])
+    bin_centers = 0.5 * (bins[1:] + bins[:-1])
     # Compute the PDF on the bin centers from scipy distribution object
     # norm_pdf = stats.norm.pdf(bin_centers)
     return bin_centers, histogram
 
 
-def ridge_plot_psd(data, fs, *args, xlabel=False, ylabel=False, labels=False, figname=None):
+def ridge_plot_psd(
+    data, fs, *args, xlabel=False, ylabel=False, labels=False, figname=None
+):
     """Plot data in a ridge plot with fixed width and fixed height per ridge.
 
     Args:
@@ -311,36 +371,60 @@ def ridge_plot_psd(data, fs, *args, xlabel=False, ylabel=False, labels=False, fi
         # === Calculate PSD
         signal = s[1]
         Xn = (signal - signal.mean()) / signal.std()
-        ax_objs.append(fig.add_subplot(gs[i:i + 1, 0:]))
+        ax_objs.append(fig.add_subplot(gs[i : i + 1, 0:]))
         # === Do actual plotting
         fp_, P_Xn = ssi.periodogram(Xn, fs=fs, return_onesided=False)
         fp = fp_[fp_ > 0]
         P_Xn = P_Xn[fp_ > 0]
         col[i] = next(clr)
-        l = ax_objs[-1].loglog(fp[1:], P_Xn[1:], color=(col[0], col[1], col[2]), label='periodogram', alpha=.5)[0]
+        l = ax_objs[-1].loglog(
+            fp[1:],
+            P_Xn[1:],
+            color=(col[0], col[1], col[2]),
+            label="periodogram",
+            alpha=0.5,
+        )[0]
         l2.append(l)
-        for nperseg in 2**np.array([17, 13]):
+        for nperseg in 2 ** np.array([17, 13]):
             f_, S_Xn = ssi.welch(Xn, fs=fs, nperseg=nperseg, return_onesided=False)
             f = f_[f_ > 0]
             S_Xn = S_Xn[f_ > 0]
             col[i] = next(clr)
-            ax_objs[-1].loglog(f[1:], S_Xn[1:], color=(col[0], col[1], col[2]), label='welch $2^{' + str(int(np.log2(nperseg))) + '}$', alpha=.6)
+            ax_objs[-1].loglog(
+                f[1:],
+                S_Xn[1:],
+                color=(col[0], col[1], col[2]),
+                label="welch $2^{" + str(int(np.log2(nperseg))) + "}$",
+                alpha=0.6,
+            )
         w = 2 * np.pi * fp[1:]
-        t_d = (1 / fs)**2
-        lor = 2 * t_d / (1 + (t_d * w)**2)
+        t_d = (1 / fs) ** 2
+        lor = 2 * t_d / (1 + (t_d * w) ** 2)
         col[i] = next(clr)
-        ax_objs[-1].loglog(fp[1:], lor, '--', color=(col[0], col[1], col[2]),
-                           label='Lorentz spectrum', alpha=.8)
+        ax_objs[-1].loglog(
+            fp[1:],
+            lor,
+            "--",
+            color=(col[0], col[1], col[2]),
+            label="Lorentz spectrum",
+            alpha=0.8,
+        )
         # === Do actual plotting
-        if 'squeeze' in args:
+        if "squeeze" in args:
             if i % 2:
-                ax_objs[-1].tick_params(axis='y', which='both', left=False,
-                                        labelleft=False, labelright=True)
-                ax_objs[-1].spines['left'].set_color('k')
+                ax_objs[-1].tick_params(
+                    axis="y", which="both", left=False, labelleft=False, labelright=True
+                )
+                ax_objs[-1].spines["left"].set_color("k")
             else:
-                ax_objs[-1].tick_params(axis='y', which='both', right=False,
-                                        labelleft=True, labelright=False)
-                ax_objs[-1].spines['right'].set_color('k')
+                ax_objs[-1].tick_params(
+                    axis="y",
+                    which="both",
+                    right=False,
+                    labelleft=True,
+                    labelright=False,
+                )
+                ax_objs[-1].spines["right"].set_color("k")
         if i == 0:
             spines = ["bottom"]
         elif i == len(data) - 1:
@@ -354,42 +438,58 @@ def ridge_plot_psd(data, fs, *args, xlabel=False, ylabel=False, labels=False, fi
             # ax_objs[-1].spines['left'].set_color((col1[0], col1[1], col1[2]))
             # ax_objs[-1].spines['right'].set_color((col1[0], col1[1], col1[2]))
             ax_objs[-1].yaxis.label.set_color((col1[0], col1[1], col1[2]))
-            ax_objs[-1].tick_params(axis='y', which='both', colors=(col1[0], col1[1], col1[2]))
-        if not 'squeeze' in args:
-            ax_objs[-1].spines['left'].set_color((col1[0], col1[1], col1[2]))
-            ax_objs[-1].spines['right'].set_color((col1[0], col1[1], col1[2]))
+            ax_objs[-1].tick_params(
+                axis="y", which="both", colors=(col1[0], col1[1], col1[2])
+            )
+        if not "squeeze" in args:
+            ax_objs[-1].spines["left"].set_color((col1[0], col1[1], col1[2]))
+            ax_objs[-1].spines["right"].set_color((col1[0], col1[1], col1[2]))
         # if ylabel:
         #     plt.ylabel(ylabel)
         if i == len(data) - 1:
             if xlabel:
                 plt.xlabel(xlabel)
-            plt.tick_params(axis='x', which='both', top=False)
+            plt.tick_params(axis="x", which="both", top=False)
         elif i == 0:
-            plt.tick_params(axis='x', which='both',
-                            bottom=False, labelbottom=False)
+            plt.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
         else:
-            plt.tick_params(axis='x', which='both', bottom=False,
-                            top=False, labelbottom=False)
+            plt.tick_params(
+                axis="x", which="both", bottom=False, top=False, labelbottom=False
+            )
 
     if ylabel:
-        fig.text(0.01, 0.5, ylabel, ha='left',
-                 va='center', rotation='vertical')
+        fig.text(0.01, 0.5, ylabel, ha="left", va="center", rotation="vertical")
 
-    ax_objs[-1].legend(prop={'size': 6})
+    ax_objs[-1].legend(prop={"size": 6})
     if labels:
         if len(labels) == len(data):
-            fig.legend(l2, labels, loc='lower center',  bbox_to_anchor=(.5, 1.),
-                    bbox_transform=ax_objs[0].transAxes, ncol=len(data))
+            fig.legend(
+                l2,
+                labels,
+                loc="lower center",
+                bbox_to_anchor=(0.5, 1.0),
+                bbox_transform=ax_objs[0].transAxes,
+                ncol=len(data),
+            )
         else:
-            print('Length of labels and data was not equal.')
-    if 'squeeze' in args:
+            print("Length of labels and data was not equal.")
+    if "squeeze" in args:
         gs.update(hspace=-0.4)
     else:
-        gs.update(hspace=0.)
+        gs.update(hspace=0.0)
 
 
 # TODO: write this into a class?
-def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=None, y_scale=1., **kwargs):
+def ridge_plot(
+    data,
+    *args,
+    xlabel=False,
+    ylabel=False,
+    labels=False,
+    figname=None,
+    y_scale=1.0,
+    **kwargs,
+):
     """Plot data in a ridge plot with fixed width and fixed height per ridge.
 
     Args:
@@ -414,10 +514,10 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
         color (str, optional): override the color loop with a constant color
         lt (str, optional): override the linetype
     """
-    if 'plt_type' in kwargs.keys():
-        plt_type = kwargs['plt_type']
+    if "plt_type" in kwargs.keys():
+        plt_type = kwargs["plt_type"]
     else:
-        plt_type = 'plot'
+        plt_type = "plot"
     fsize = (4, y_scale * len(data))
     gs = grid_spec.GridSpec(len(data), 1)
     if figname is not None:
@@ -426,13 +526,22 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
         fig = plt.figure(figsize=fsize)
     ax_objs = []
     l2 = []
-    ls = ['-', '--']
+    ls = ["-", "--"]
     ls = itertools.cycle(ls)
-    c = ['r', 'g', 'b', 'magenta', 'darkorange',
-         'chartreuse', 'firebrick', 'yellow', 'royalblue']
+    c = [
+        "r",
+        "g",
+        "b",
+        "magenta",
+        "darkorange",
+        "chartreuse",
+        "firebrick",
+        "yellow",
+        "royalblue",
+    ]
     c = itertools.cycle(c)
-    if 'xlim' in kwargs.keys():
-        x_min, x_max = kwargs['xlim']
+    if "xlim" in kwargs.keys():
+        x_min, x_max = kwargs["xlim"]
     # TODO: only given T_max and dt (optional), calculate time / x axis. x axis arrays will not be needed
     # elif len([a for a in args if not isinstance(args, str)]) > 0:
     #     if len([a for a in args if not isinstance(args, str)]) == 1:
@@ -442,25 +551,34 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
     #         T = [a for a in args if not isinstance(args, str)][0]
     #         dt = [a for a in args if not isinstance(args, str)][1]
     elif len(data[0]) != 2:
-        print('reset')
+        print("reset")
         x_min, x_max = 0, len(data[0])
-    elif 'x_lim_S' in args:
+    elif "x_lim_S" in args:
         x_min, x_max = x_limit([d[0] for d in data], plt_type, False)
     else:
         x_min, x_max = x_limit([d[0] for d in data], plt_type)
 
     if ylabel:
         ax = fig.add_subplot(111, frame_on=False)
-        ax.tick_params(labelcolor='w', axis='both', which='both', zorder=-1,  # labelleft=False,
-                       labelbottom=False, top=False, bottom=False, left=False, right=False)
+        ax.tick_params(
+            labelcolor="w",
+            axis="both",
+            which="both",
+            zorder=-1,  # labelleft=False,
+            labelbottom=False,
+            top=False,
+            bottom=False,
+            left=False,
+            right=False,
+        )
 
     # Loop through data
     y_min = np.inf
-    y_max = - np.inf
+    y_max = -np.inf
     for i, s in enumerate(data):
         col = next(c)
         lnst = next(ls)
-        ax_objs.append(fig.add_subplot(gs[i:i + 1, 0:]))
+        ax_objs.append(fig.add_subplot(gs[i : i + 1, 0:]))
         if i == 0:
             spines = ["bottom"]
         elif i == len(data) - 1:
@@ -472,9 +590,9 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
 
         # Plot data
         p_func = getattr(ax_objs[-1], plt_type)
-        line_type = '-o' if 'dots' in args else '-'
-        line_type = kwargs['lt'] if 'lt' in kwargs.keys() else line_type
-        clr = kwargs['color'] if 'color' in kwargs.keys() else col
+        line_type = "-o" if "dots" in args else "-"
+        line_type = kwargs["lt"] if "lt" in kwargs.keys() else line_type
+        clr = kwargs["color"] if "color" in kwargs.keys() else col
         if len(s) == 2:
             l = p_func(s[0], s[1], line_type, color=clr, markersize=1.5)[0]
         else:
@@ -485,68 +603,91 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
         ax_objs[-1].patch.set_alpha(0)
         # Scale all subplots to the same x axis
         plt.xlim([x_min, x_max])
-        if 'ylim' in kwargs.keys():
-            plt.ylim(kwargs['ylim'])
+        if "ylim" in kwargs.keys():
+            plt.ylim(kwargs["ylim"])
 
         # The length of data is greater than one, fix the plot according to the input args and kwargs.
-        if 'blank' in args:
-            spine = ['top', 'bottom', 'left', 'right']
+        if "blank" in args:
+            spine = ["top", "bottom", "left", "right"]
             for sp in spine:
                 ax_objs[-1].spines[sp].set_visible(False)
-            plt.tick_params(axis='both', which='both', bottom=False, left=False,
-                            top=False, right=False, labelbottom=False, labelleft=False)
+            plt.tick_params(
+                axis="both",
+                which="both",
+                bottom=False,
+                left=False,
+                top=False,
+                right=False,
+                labelbottom=False,
+                labelleft=False,
+            )
         else:
             if len(data) != 1:
-                if 'squeeze' in args:
+                if "squeeze" in args:
                     if i % 2:
-                        ax_objs[-1].tick_params(axis='y', which='both', left=False,
-                                                labelleft=False, labelright=True)
-                        ax_objs[-1].spines['left'].set_color('k')
+                        ax_objs[-1].tick_params(
+                            axis="y",
+                            which="both",
+                            left=False,
+                            labelleft=False,
+                            labelright=True,
+                        )
+                        ax_objs[-1].spines["left"].set_color("k")
                     else:
-                        ax_objs[-1].tick_params(axis='y', which='both', right=False,
-                                                labelleft=True, labelright=False)
-                        ax_objs[-1].spines['right'].set_color('k')
-                elif 'slalomaxis' in args:
+                        ax_objs[-1].tick_params(
+                            axis="y",
+                            which="both",
+                            right=False,
+                            labelleft=True,
+                            labelright=False,
+                        )
+                        ax_objs[-1].spines["right"].set_color("k")
+                elif "slalomaxis" in args:
                     if i % 2:
-                        ax_objs[-1].tick_params(axis='y', which='both',
-                                        labelleft=False, labelright=True)
+                        ax_objs[-1].tick_params(
+                            axis="y", which="both", labelleft=False, labelright=True
+                        )
                 for sp in spines:
                     ax_objs[-1].spines[sp].set_visible(False)
-                if 'squeeze' not in args:
-                    ax_objs[-1].spines['left'].set_color(col)
-                    ax_objs[-1].spines['right'].set_color(col)
-                ax_objs[-1].tick_params(axis='y', which='both', colors=col)
+                if "squeeze" not in args:
+                    ax_objs[-1].spines["left"].set_color(col)
+                    ax_objs[-1].spines["right"].set_color(col)
+                ax_objs[-1].tick_params(axis="y", which="both", colors=col)
                 ax_objs[-1].yaxis.label.set_color(col)
-            if ('grid' in args and 'squeeze' not in args) or ('grid' in args and len(data) == 1):
+            if ("grid" in args and "squeeze" not in args) or (
+                "grid" in args and len(data) == 1
+            ):
                 plt.grid(True, which="major", ls="-", alpha=0.2)
-            elif 'grid' in args and 'squeeze' in args:
+            elif "grid" in args and "squeeze" in args:
                 plt.minorticks_off()
-                alpha = .2 if i in (0, len(data) - 1) else .1
-                plt.grid(True, axis='y', which="major", ls=lnst, alpha=0.2)
-                plt.grid(True, axis='x', which="major", ls='-', alpha=alpha)
+                alpha = 0.2 if i in (0, len(data) - 1) else 0.1
+                plt.grid(True, axis="y", which="major", ls=lnst, alpha=0.2)
+                plt.grid(True, axis="x", which="major", ls="-", alpha=alpha)
             if i == len(data) - 1:
                 if xlabel:
                     plt.xlabel(xlabel)
                 if len(data) != 1:
-                    plt.tick_params(axis='x', which='both', top=False)
+                    plt.tick_params(axis="x", which="both", top=False)
             elif i == 0:
-                plt.tick_params(axis='x', which='both',
-                                bottom=False, labelbottom=False)  # , labeltop=True
+                plt.tick_params(
+                    axis="x", which="both", bottom=False, labelbottom=False
+                )  # , labeltop=True
             else:
-                plt.tick_params(axis='x', which='both', bottom=False,
-                                top=False, labelbottom=False)
+                plt.tick_params(
+                    axis="x", which="both", bottom=False, top=False, labelbottom=False
+                )
 
     if ylabel:
-        ax.spines['top'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
-        ax.spines['left'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        plt_type = 'log' if plt_type in ['semilogy', 'loglog'] else plt_type
-        if plt_type != 'plot':
+        ax.spines["top"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        plt_type = "log" if plt_type in ["semilogy", "loglog"] else plt_type
+        if plt_type != "plot":
             ax.set_yscale(plt_type)
         ax.set_ylabel(ylabel)
-        y_min = 1e-3 if plt_type == 'log' and y_min <= 0 else y_min
-        ylim = kwargs['ylim'] if 'ylim' in kwargs.keys() else [y_min, y_max]
+        y_min = 1e-3 if plt_type == "log" and y_min <= 0 else y_min
+        ylim = kwargs["ylim"] if "ylim" in kwargs.keys() else [y_min, y_max]
         ax.set_ylim(ylim)
         # fig.text(0.01, 0.5, ylabel, ha='left', va='center', rotation='vertical')
 
@@ -558,14 +699,20 @@ def ridge_plot(data, *args, xlabel=False, ylabel=False, labels=False, figname=No
             n_col = 1
             while l_d > n_col * n_row:
                 n_col += 1
-            fig.legend(l2, labels, loc='lower center',  bbox_to_anchor=(.5, 1.),
-                    bbox_transform=ax_objs[0].transAxes, ncol=n_col)
+            fig.legend(
+                l2,
+                labels,
+                loc="lower center",
+                bbox_to_anchor=(0.5, 1.0),
+                bbox_transform=ax_objs[0].transAxes,
+                ncol=n_col,
+            )
         else:
-            print('Length of labels and data was not equal.')
-    if 'squeeze' in args:
+            print("Length of labels and data was not equal.")
+    if "squeeze" in args:
         gs.update(hspace=-0.5)
     else:
-        gs.update(hspace=0.)
+        gs.update(hspace=0.0)
 
 
 def x_limit(data, plt_type, maxx=True):
@@ -581,11 +728,11 @@ def x_limit(data, plt_type, maxx=True):
             t_min = t if t[0] > t_min[0] else t_min
             # t_max = t if t[-1] < t_max[-1] else t_max
             x_max = t_max if t_max < x_max else x_max
-    diff = .05 * (x_max - t_min[0])
+    diff = 0.05 * (x_max - t_min[0])
     # x_max = t_max[-1] + diff
     x_max += diff
-    if plt_type in ['loglog', 'semilogx']:
-        x_min = .8 * t_min[t_min > 0][0] if t_min[0] < diff else t_min[0] - diff
+    if plt_type in ["loglog", "semilogx"]:
+        x_min = 0.8 * t_min[t_min > 0][0] if t_min[0] < diff else t_min[0] - diff
         # if x_min < 0:
         #     x_min = 1e-10
     else:
