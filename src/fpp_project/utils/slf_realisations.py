@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.signal as ssi
-import fpp_project.utils.slf as slf
-import fpp_project.utils.tools as tools
 import uit_scripts.stat_analysis as sa
 from scipy.optimize import curve_fit
-
 from uit_scripts.plotting import figure_defs as fd
+
+import fpp_project.utils.slf as slf
+import fpp_project.utils.tools as tools
 
 # import matplotlib.ticker as mticker
 # sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')

@@ -1,6 +1,7 @@
 """Helper functions to read / load data from different txt files."""
 
 from typing import List, Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
 

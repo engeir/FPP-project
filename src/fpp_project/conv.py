@@ -1,17 +1,18 @@
 """Examples on how to deconvolve using synthetic forcing and forcing data.
 """
 
-import fpp_project.data.data_manager as dm
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.integrate as si
 import scipy.optimize as scop
-
-# import matplotlib.gridspec as gridspec
 from scipy.signal import fftconvolve
 from uit_scripts.shotnoise import gen_shot_noise as gsn
 from uit_scripts.stat_analysis import deconv_methods as dpy
+
+import fpp_project.data.data_manager as dm
+
+# import matplotlib.gridspec as gridspec
 
 plt.rcParams["axes.grid"] = True
 # Customize matplotlib
