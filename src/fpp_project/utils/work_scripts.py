@@ -38,9 +38,9 @@ def fpp_example(data=True, save=False):
         np.savez(file, s=s, pulse=pulse)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        s = f["s"]
-        pulse = f["pulse"]
+        with np.load(file, allow_pickle=True) as f:
+            s = f["s"]
+            pulse = f["pulse"]
 
     p.plot_realisation("plot_real", parameter=s, fit=False)
     plt.subplot(2, 1, 1)
@@ -92,10 +92,10 @@ def amplitude_dist(data=True, save=False):
         np.savez(file, data1=data1, data2=data2, amps=amps)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        data1 = f["data1"]
-        data2 = f["data2"]
-        amps = f["amps"]
+        with np.load(file, allow_pickle=True) as f:
+            data1 = f["data1"]
+            data2 = f["data2"]
+            amps = f["amps"]
 
     lab = [f"{a}" for a in amp]
     tools.ridge_plot_psd(
@@ -142,8 +142,12 @@ def amplitude_dist(data=True, save=False):
 def fpp_sde_realisations(data=True, save=False):
     """Example of FPP and SDE realisations with varying gamma.
 
-    Args:
-        save (bool, optional): save if True, show if False. Defaults to False.
+    Parameters
+    ----------
+    data: bool
+        Use saved data (default) or generate new
+    save: bool
+        save if True, show if False. Defaults to False.
     """
     file = f"{data_path}fpp_sde.npz"
     gamma = [0.1, 1.0, 10.0]
@@ -172,9 +176,9 @@ def fpp_sde_realisations(data=True, save=False):
         np.savez(file, fpp=fpp, sde=sde)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        fpp = f["fpp"]
-        sde = f["sde"]
+        with np.load(file, allow_pickle=True) as f:
+            fpp = f["fpp"]
+            sde = f["sde"]
 
     lab = [fr"$\gamma = {g}$" for g in gamma]
     tools.ridge_plot(
@@ -231,9 +235,9 @@ def fpp_sde_real_L(data=True, save=False):
         np.savez(file, fpp=fpp, sde=sde)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        fpp = f["fpp"]
-        sde = f["sde"]
+        with np.load(file, allow_pickle=True) as f:
+            fpp = f["fpp"]
+            sde = f["sde"]
 
     plt.rcParams["lines.linewidth"] = 0.4
     lab = [fr"$\gamma = {g}$" for g in gamma]
@@ -282,9 +286,9 @@ def fpp_sde_psdpdf(data=True, save=False):
         np.savez(file, fpp=fpp, sde=sde)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        fpp = f["fpp"]
-        sde = f["sde"]
+        with np.load(file, allow_pickle=True) as f:
+            fpp = f["fpp"]
+            sde = f["sde"]
 
     lab = [fr"$\gamma = {g}$" for g in gamma]
     tools.ridge_plot_psd(
@@ -323,9 +327,8 @@ def sde_tw(data=True, save=False):
     if not data:
         p = slf.SDEProcess()
         # print(f'Loading data from {file}')
-        # f = np.load(file_grab, allow_pickle=True)
-        # sde = list(f['sde'])
-        # del f
+        # with np.load(file_grab, allow_pickle=True) as f:
+        #     sde = list(f['sde'])
 
         sde = []
         ta = []
@@ -348,11 +351,11 @@ def sde_tw(data=True, save=False):
         np.savez(file, sde=sde, ta=ta, amp=amp, f=force)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        # sde = f['sde']
-        ta = f["ta"]
-        amp = f["amp"]
-        # force = f['f']
+        with np.load(file, allow_pickle=True) as f:
+            # sde = f['sde']
+            ta = f["ta"]
+            amp = f["amp"]
+            # force = f['f']
 
     # F = []
     # for ff in force:
@@ -364,11 +367,11 @@ def sde_tw(data=True, save=False):
     tw_exp = []
     amp_exp = []
     tw_std = []
-    twtxt_x = 20
-    twtxt_y = [5e4, 5e1, 1e-1, 2e-4]
+    # twtxt_x = 20
+    # twtxt_y = [5e4, 5e1, 1e-1, 2e-4]
     tw_fit = []
     amp_std = []
-    amptxt_y = [1e7, 5e3, 2e0, 2e-4]
+    # amptxt_y = [1e7, 5e3, 2e0, 2e-4]
     amp_fit = []
     for i, (s, a) in enumerate(zip(ta, amp)):
         if i == 4:
@@ -423,7 +426,7 @@ def sde_tw(data=True, save=False):
             popt, _ = curve_fit(tools.pow_func, x1, y1)
             tw_exp.append((x, tools.pow_func(x, *popt)))
             tw_fit.append(fr"$\mathrm{{pow}} = - {popt[1]:2.2f}$")
-    tw = TW
+    # tw = TW
     amp = AMP
     lab = [fr"$\gamma = {g}$" for g in gamma]
     # f0 = force[0][0]
@@ -502,7 +505,8 @@ def fpp_tw_real(data=True, save=False):
                 p.set_params(
                     gamma=g, K=int(N * g * dt), dt=dt, tw=tw, snr=snr, rate=r, amp="exp"
                 )
-                s1, _, s2 = p.create_realisation(fit=False)
+                out = p.create_realisation(fit=False)
+                s1, s2 = out[0], out[-1]
                 s = (s1, s2)
                 fpps[i].append(s)
                 print(p.K)
@@ -514,10 +518,10 @@ def fpp_tw_real(data=True, save=False):
         np.savez(file, fpp_c=fpp_c, fpp_t=fpp_t, fpp_v=fpp_v)
     else:
         print(f"Loading data from {file}")
-        f = np.load(file, allow_pickle=True)
-        fpp_c = f["fpp_c"]
-        fpp_t = f["fpp_t"]
-        fpp_v = f["fpp_v"]
+        with np.load(file, allow_pickle=True) as f:
+            fpp_c = f["fpp_c"]
+            fpp_t = f["fpp_t"]
+            fpp_v = f["fpp_v"]
 
     plt.rcParams["lines.linewidth"] = 0.4
     lab = [fr"$\gamma = {g}$" for g in gamma]
@@ -559,11 +563,10 @@ def fpp_tw_psd(save=False):
     dt = 1e-2
 
     print(f"Loading data from {file}")
-    f = np.load(file, allow_pickle=True)
-    fpp_c = f["fpp_c"]
-    fpp_t = f["fpp_t"]
-    fpp_v = f["fpp_v"]
-    del f
+    with np.load(file, allow_pickle=True) as f:
+        fpp_c = f["fpp_c"]
+        fpp_t = f["fpp_t"]
+        fpp_v = f["fpp_v"]
 
     lab = [fr"$\gamma = {g}$" for g in gamma]
     tools.ridge_plot_psd(
@@ -614,15 +617,15 @@ def fpp_tw_psd(save=False):
 
 
 if __name__ == "__main__":
-    # fpp_example()  # 1
+    fpp_example()  # 1
     amplitude_dist()  # 2
-    # fpp_sde_realisations()  # 3
-    # fpp_sde_real_L()  # 4
-    # fpp_sde_psdpdf()  # 5
-    # sde_tw()  # 6
+    fpp_sde_realisations()  # 3
+    fpp_sde_real_L()  # 4
+    fpp_sde_psdpdf()  # 5
+    sde_tw()  # 6
     # Figure 7 is created in slf.py
-    # fpp_tw_real()  # 8
-    # fpp_tw_psd()  # 9
+    fpp_tw_real()  # 8
+    fpp_tw_psd()  # 9
     # fpp_tw_dist(data=False)
     # fpp_tw_cox()
     # fpptw_sde_real()

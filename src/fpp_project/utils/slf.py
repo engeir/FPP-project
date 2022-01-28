@@ -11,15 +11,16 @@ import numpy as np
 import sdepy
 import tick.base as tb
 import tick.hawkes as th
-import fpp_project.utils.tools as tools
 from scipy.signal import fftconvolve
 from sklearn.datasets import make_blobs
-
-# sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
-# sys.path.append('/home/een023/resolve/uit_scripts')
 from uit_scripts.misc import runge_kutta_SDE as rksde  # pylint: disable=E0401
 from uit_scripts.shotnoise import gen_shot_noise as gsn  # pylint: disable=E0401
 from uit_scripts.stat_analysis import deconv_methods as dm  # pylint: disable=E0401
+
+import fpp_project.utils.tools as tools
+
+# sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
+# sys.path.append('/home/een023/resolve/uit_scripts')
 
 
 class Realisation:
@@ -692,17 +693,17 @@ class FPPProcess(Process):
 
 if __name__ == "__main__":
     ## === Examples ===
-    # p = Process()
-    # kern = ['1exp']  #, '1exp']  # 'power', '1exp', '1exp'
-    # tw = ['exp']  #, 'var_rate']  # 'var_rate', 'ray', 'cluster'
-    # for k, t in zip(kern, tw):
-    #     print(k, t)
-    #     p.set_params(gamma=1., K=1000, kern=k, snr=.0, tw=t, dt=0.01)
-    #     p.plot_realisation('plot_psd')  #=True)
-    # p.set_params(gamma=1., kern='1exp', snr=.0, tw='var_rate')
-    # p.create_forcing()
-    # p.plot_realisation('plot_all')
-    # p.plot_psd()
+    p = FPPProcess()
+    kern = ["1-exp"]  # , '1exp']  # 'power', '1exp', '1exp'
+    tw = ["tick"]  # , 'var_rate']  # 'var_rate', 'ray', 'cluster'
+    for k, t in zip(kern, tw):
+        print(k, t)
+        p.set_params(gamma=1.0, K=1000, kern=k, snr=0.0, tw=t, dt=0.01)
+        p.plot_realisation("plot_psd")  # =True)
+    p.set_params(gamma=1.0, kern="1-exp", snr=0.0, tw="tick")
+    p.create_ampta()
+    p.plot_realisation("plot_all")
+    p.plot_psd()
 
     # # r_n = Realisation()
     # r_c = Realisation()

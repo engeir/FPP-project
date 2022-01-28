@@ -411,15 +411,15 @@ def plot_temp(version):
 
 if __name__ == "__main__":
     # synthetic_forcing()
-    # synthetic_spread()
-    # find_forcing()
-    # find_sensitivity()
-    co2x2()
+    synthetic_spread()
+    find_forcing()
+    find_sensitivity()
+    # co2x2()
     # plot_temp('pure')
     # plot_temp('zeroed')
     # dm.look_at_txt(
     #     'data/glannual_anomaly_ts_Amon_NorESM1-M_abrupt4xCO2_r1i1p1_000101-015012.txt')
-    a = dm.look_at_jones_mann()
-    print(a[0])
-    dm.plot_list_data("jones_mann")  # pages_ens
+    # a = dm.look_at_jones_mann()
+    # print(a[0])
+    # dm.plot_list_data("jones_mann")  # pages_ens
     plt.show()
