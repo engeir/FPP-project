@@ -169,17 +169,17 @@ def deconv(r, f, p_s, iterations=100, pts=True, time=None, shift=False):
 def find_forcing():
     # === LOOK AT DATA ===
     # ctrl.files = ['T_orig', 'C_orig', 'T_yav', 'C_yav', 'scriptname']
-    # with np.load("data/control_run.npz", mmap_mode="r") as ctrl:
+    # with np.load("src/fpp_project/data/control_run.npz", mmap_mode="r") as ctrl:
     #     c = ctrl["C_yav"]
 
     # sig_in.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
-    with np.load("data/temp_yav_O.npz", mmap_mode="r") as sig:
+    with np.load("src/fpp_project/data/temp_yav_O.npz", mmap_mode="r") as sig:
         t = sig["T"]
         s_in = sig["I"]
         s_out = sig["O"]
 
     # sig_out.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
-    # sig_2 = np.load("data/temp_rep_I.npz", mmap_mode="r")
+    # sig_2 = np.load("src/fpp_project/data/temp_rep_I.npz", mmap_mode="r")
 
     plt.figure(figsize=(9, 6))
     plt.subplot(4, 1, 1)
@@ -209,18 +209,18 @@ def find_forcing():
 def find_sensitivity():
     # === LOOK AT DATA ===
     # ctrl.files = ['T_orig', 'C_orig', 'T_yav', 'C_yav', 'scriptname']
-    # with np.load("data/control_run.npz", mmap_mode="r") as ctrl:
+    # with np.load("src/fpp_project/data/control_run.npz", mmap_mode="r") as ctrl:
     #     c = ctrl['C_yav']
 
     # sig_in.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
-    with np.load("data/temp_yav_O.npz", mmap_mode="r") as sig:
+    with np.load("src/fpp_project/data/temp_yav_O.npz", mmap_mode="r") as sig:
         t = sig["T"]
         s_in = sig["I"]
         s_out = sig["O"]
 
     # This one is very noisy. Use the above instead.
     # sig_out.files = ['T_orig', 'I_orig', 'O_orig', 'T', 'I', 'O', 'scriptname']
-    # sig_2 = np.load("data/temp_rep_I.npz", mmap_mode="r")
+    # sig_2 = np.load("src/fpp_project/data/temp_rep_I.npz", mmap_mode="r")
 
     # === DECONVOLVE DATA ===
     # d_response, error = deconv(s_out, s_in, None, pts=False, time=t, iterations=[414, 1000])
@@ -355,7 +355,7 @@ def co2x2():
     time = np.linspace(-100, 2900, 3000)
     forcing = np.heaviside(time, 1) * 2
 
-    with np.load("data/temp_yav_O.npz", mmap_mode="r") as sig:
+    with np.load("src/fpp_project/data/temp_yav_O.npz", mmap_mode="r") as sig:
         t = sig["T"]
         s_in = sig["I"]
         s_out = sig["O"]

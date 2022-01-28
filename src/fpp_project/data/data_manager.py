@@ -1,7 +1,6 @@
-#!/home/een023/.virtualenvs/uit_scripts/bin/python
-"""This script includes helper functions to read / load data from different txt files.
-"""
+"""Helper functions to read / load data from different txt files."""
 
+from typing import List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -44,8 +43,7 @@ def look_at_txt(file_name):
         np.ndarray: numpy array of the data
     """
     with open(file_name, "r") as f:
-        b = f.readlines()
-        b = [x.strip() for x in b]
+        b = [x.strip() for x in f.readlines()]
 
     return np.asarray(b).astype(float)
 
@@ -58,10 +56,10 @@ def look_at_full_ensemble():
     Returns:
         list: first element is the description, second is a numpy array of the data
     """
-    with open("data/recons/Full_ensemble_median_and 95pct_range.txt", "r") as f:
-        b = f.readlines()
-        b = [x.strip() for x in b]
-        b = [x.split("\t") for x in b]
+    with open(
+        "src/fpp_project/data/recons/Full_ensemble_median_and 95pct_range.txt", "r"
+    ) as f:
+        b = [x.split("\t") for x in [x.strip() for x in f.readlines()]]
     a1 = b[4]
     b = b[4:]
     a = np.array([])
@@ -74,20 +72,18 @@ def look_at_full_ensemble():
     return [a1, a.T]
 
 
-def look_at_jones_mann():
+def look_at_jones_mann() -> Tuple[List, np.ndarray]:
     """Look at the txt file from figure 7 of the Jones and Mann paper.
 
     Returns:
         list: first element is the description, second is a numpy array of the data
     """
-    with open("data/jones_mann/jones_mann_fig7.txt", "r") as f:
-        b = f.readlines()
-        b = [x.strip() for x in b]
-        b = [x.split() for x in b]
+    with open("src/fpp_project/data/jones_mann/jones_mann_fig7.txt", "r") as f:
+        b = [x.split() for x in [x.strip() for x in f.readlines()]]
     a1 = b[:17]
     b = b[17:]
     a2 = np.asarray(b).astype(float)
-    return [a1, a2]
+    return a1, a2
 
 
 def plot_list_data(the_type, v="M08"):

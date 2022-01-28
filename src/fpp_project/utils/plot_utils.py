@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 
 
 def get_fig_size(fig_width_cm, fig_height_cm=None):
-    """Convert dimensions in centimeters to inches.
+    """Convert dimensions in centimetres to inches.
+
     If no height is given, it is computed using the golden ratio.
     """
     if not fig_height_cm:
