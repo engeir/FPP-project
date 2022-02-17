@@ -5,6 +5,7 @@ with implementation of clustering methods for waiting times.
 """
 
 from abc import ABC, abstractmethod
+from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -88,8 +89,11 @@ class Realisation:
 
 class Process(ABC):
     """Base class for a Process object.
-    Arguments:
-        ABC {class} -- abstract base class that all Process objects inherit from
+
+    Parameters
+    ----------
+    ABC: class
+        abstract base class that all Process objects inherit from
     """
 
     process: str
@@ -99,10 +103,6 @@ class Process(ABC):
         self.K = 1000
         self.dt = 0.01
         self.__update_params()
-
-    # @abstractproperty
-    # def process(self) -> str:
-    #     """The type of the intregrand implementation."""
 
     def set_params(self, **kwargs):
         """Handles how the parameters are set."""
@@ -129,17 +129,51 @@ class Process(ABC):
         else:
             print(self.__dict__.keys())
 
+    @abstractmethod
+    def get_tw() -> Tuple:
+        """Return waiting times or relevant arrays."""
+
     def __update_params(self):
         self.T = self.K / self.gamma
         # self.K = int(self.gamma * self.T)
 
     @abstractmethod
-    def create_realisation(self, fit=True) -> np.ndarray:
-        """Method that creates a realisation of the process and returns the resulting arrays.
+    def create_realisation(self, fit=True) -> Tuple[np.ndarray]:
+        """Create a realisation of the process and return the resulting arrays.
 
-        Returns:
-            np.ndarray: see specific classes for number of outputs
+        Returns
+        -------
+        Tuple[np.ndarray]
+            See specific classes for number of outputs
         """
+
+    @staticmethod
+    def fit_pulse(
+        t: np.ndarray, forcing: np.ndarray, response: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Return pulse shape along with fits to the time series and the error.
+
+        Parameters
+        ----------
+        t: np.ndarray
+            Time axis
+        forcing: np.ndarray
+            Forcing time series
+        response: np.ndarray
+            The output time series, e.g. temperature
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+            Pulse time series, pulse fit, response fit and error.
+        """
+        # Shift removed. Not needed?
+        pulse, error = dm.RL_gauss_deconvolve(response, forcing, 600)
+        # pulse, error = dm.RL_gauss_deconvolve(response, forcing, 600, shift=None)
+        pulse = pulse.reshape((-1,))
+        pulse_fit = tools.optimize(t, np.copy(pulse), pen=False)
+        response_fit = fftconvolve(forcing, pulse_fit, mode="same")
+        return pulse, pulse_fit, response_fit, error
 
     # , all_plots=False, real=False, psd=False):
     def plot_realisation(self, *plot, parameter=None, **kwargs):
@@ -228,7 +262,22 @@ class SDEProcess(Process):
         ta_est, amp_est = dm.find_amp_ta_savgol(res, t)
         return amp_est, ta_est, kern, res, err
 
-    def create_realisation(self, fit=True):
+    def create_realisation(self, fit=True) -> Tuple[np.ndarray, ...]:
+        """Returns a realisation of the process with optional extra arrays.
+
+        Parameters
+        ----------
+        fit: bool
+            Return the time series and extra arrays if True. The time axis will be the
+            first array, time series the last array, while the rest are arrival times,
+            amplitudes, pulse shape and forcing. Default is True.
+
+        Returns
+        -------
+        Tuple[np.ndarray, ...]
+            If fit, returns time axis, arrival times, amplitudes, pulse, forcing, error
+            and original response, else, returns time axis and response
+        """
         # @sdepy.integrate
         # def rate_process(t, x, gamma=1.):
         #     return {'dt': x * (1 - x / (1 + gamma)), 'dw': 2**(1/2) * x * (1+gamma)**(-1/2)}
@@ -249,7 +298,20 @@ class SDEProcess(Process):
 
         return t, x
 
-    def get_tw(self, parameter=None):
+    def get_tw(self, parameter: Optional[Tuple] = None) -> Tuple:
+        """Find waiting times.
+
+        Parameters
+        ----------
+        parameters: Optional[Tuple]
+            Time axis and time series realisation.
+
+        Returns
+        -------
+        Tuple
+            Returns a five-tuple of numpy arrays, where the order is time axis, time
+            series, arrival times, amplitudes and forcing.
+        """
         if parameter is None:
             parameter = self.create_realisation(fit=False)
         else:
@@ -324,13 +386,38 @@ class FPPProcess(Process):
         self.amp = "exp"
         self.mA = 1.0
 
-    def create_rate(self, version, k_length=True, tw=False):
+    def _create_rate(
+        self, version, k_length=True, tw=False
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Create the variable rate process.
+
+        This method should only be used as a local method inside the class.
+
+        Parameters
+        ----------
+        version: str
+            The v_rate describes how the rate process is generated. Valid options are 'ou'
+            and 'n-random'.
+        k_length: bool
+            Create a process with the same length as the number 'K' of pulses. Defaults to
+            True.
+        tw: bool
+            Let the returned rate be the waiting times, not the gamma parameter. Defaults
+            to False.
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            The rate process as a numpy array is the first argument, with the time axis as
+            the second.
+        """
         # Use an Ornstein-Uhlenbeck process as the rate
         if version == "ou":
-            # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian motions. 2018. hal-01919754
-            # https://hal.archives-ouvertes.fr/hal-01919754/document
-            # and https://sdepy.readthedocs.io/en/v1.1.1/intro.html#id2
-            # This uses a Wiener process as dW(t)
+            # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian
+            # motions. 2018. hal-01919754
+            # https://hal.archives-ouvertes.fr/hal-01919754/document and
+            # https://sdepy.readthedocs.io/en/v1.1.1/intro.html#id2 This uses a Wiener
+            # process as dW(t)
             @sdepy.integrate
             def rate_process(t, x, mu=1.0, k=0.1, sigma=1.0):
                 return {"dt": k * (mu - x), "dw": sigma}
@@ -367,10 +454,25 @@ class FPPProcess(Process):
             rate = abs(rate)
         return rate, t
 
-    def create_ampta(self, version, Vrate):
-        assert version in ["var_rate", "cox", "tick"]
+    def create_ampta(self, version: str, v_rate: str) -> Tuple[np.ndarray, np.ndarray]:
+        """Create amplitudes and arrival times.
+
+        Parameters
+        ----------
+        version: str
+            This decides how the time series is generated from the rate process. Valid
+            options are 'var_rate', 'cox' and 'tick'.
+        v_rate: str
+            The v_rate describes how the rate process is generated. Valid options are 'ou'
+            and 'n-random'.
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            Amplitudes and arrival times.
+        """
         if version == "var_rate":
-            rate, t = self.create_rate(Vrate, k_length=False)
+            rate, t = self._create_rate(v_rate, k_length=False)
             t = np.linspace(0, np.sum(rate), int(1e5))
             int_thresholds = np.linspace(0, np.sum(rate), self.K)
             c_sum = np.cumsum(rate)
@@ -378,20 +480,20 @@ class FPPProcess(Process):
             ta = t[ta_i]
             # Normalize arrival times to within T_max
             ta = ta * self.T / np.ceil(np.max(ta))
-            amp, _, _ = gsn.amp_ta(self.gamma, self.K)
-            return amp, ta
-        if version == "cox":
+            out = gsn.amp_ta(self.gamma, self.K)
+            amp = np.asarray(out[0])
+        elif version == "cox":
             k_length = True
-            rate, _ = self.create_rate(Vrate, k_length=k_length, tw=True)
+            rate, _ = self._create_rate(v_rate, k_length=k_length, tw=True)
             if not k_length:
                 idx = np.round(np.linspace(0, len(rate) - 1, self.K)).astype(int)
                 rate = rate[idx]
-            amp, ta, self.T = gsn.amp_ta(
+            out = gsn.amp_ta(
                 1 / rate, self.K, TWdist="gam", Adist=self.amp, TWkappa=0.1
             )
-            return amp, ta
-        if version == "tick":
-            rate, t = self.create_rate(Vrate, k_length=False)
+            amp, ta, self.T = np.asarray(out[0]), out[1], out[2]
+        elif version == "tick":
+            rate, t = self._create_rate(v_rate, k_length=False)
             tf = tb.TimeFunction((t, rate))  # , dt=self.dt)
             ipp = th.SimuInhomogeneousPoisson([tf], end_time=self.T, verbose=False)
             ipp.track_intensity()  # Accepts float > 0 to set time step of reproduced rate process
@@ -447,13 +549,13 @@ class FPPProcess(Process):
             # sys.exit()
             # # PLOT RATE AND ESTIMATED ARRIVAL TIMES
             self.K = len(ta)
-            amp, _, _ = gsn.amp_ta(self.gamma, self.K)
-            return amp, ta
+            out = gsn.amp_ta(self.gamma, self.K)
+            amp = np.asarray(out[0])
+        else:
+            raise AttributeError(f"'{version}' is not a valid version.")
+        return amp, ta
 
     def create_forcing(self):
-        """
-        docstring
-        """
         print("Warning: This method is outdated. Use `create_ampta`.")
         kinds = ["cluster", "var_rate", "cox", "cox_var_rate", "tick"]
         assert self.tw in kinds, f'The "kind" must be on of {kinds}, not {self.tw}'
@@ -473,10 +575,11 @@ class FPPProcess(Process):
             ta = ta / np.max(ta) * self.T
             amp, _, _ = gsn.amp_ta(self.gamma, self.K)
         elif self.tw == "var_rate":
-            # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian motions. 2018. hal-01919754
-            # https://hal.archives-ouvertes.fr/hal-01919754/document
-            # and https://sdepy.readthedocs.io/en/v1.1.1/intro.html#id2
-            # This uses a Wiener process as dW(t)
+            # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian
+            # motions. 2018. hal-01919754
+            # https://hal.archives-ouvertes.fr/hal-01919754/document and
+            # https://sdepy.readthedocs.io/en/v1.1.1/intro.html#id2 This uses a Wiener
+            # process as dW(t)
             @sdepy.integrate
             def rate_process(t, x, mu=1.0, k=0.1, sigma=1.0):
                 return {"dt": k * (mu - x), "dw": sigma}
@@ -493,8 +596,8 @@ class FPPProcess(Process):
             x = abs(x)
             int_thresholds = np.linspace(0, np.sum(x), self.K)
             c_sum = np.cumsum(x)
-            ta = tools.find_nearest(c_sum, int_thresholds)
-            ta = t[ta]
+            ta_idx = tools.find_nearest(c_sum, int_thresholds)
+            ta = t[ta_idx]
             amp, _, _ = gsn.amp_ta(self.gamma, self.K)
         elif self.tw == "cox":
             prob = np.random.default_rng()
@@ -505,10 +608,11 @@ class FPPProcess(Process):
                 1 / tw, self.K, TWdist="exp", Adist=self.amp, TWkappa=0.1
             )
         elif self.tw == "cox_var_rate":
-            # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian motions. 2018. hal-01919754
-            # https://hal.archives-ouvertes.fr/hal-01919754/document
-            # and https://sdepy.readthedocs.io/en/v1.1.1/intro.html#id2
-            # This uses a Wiener process as dW(t)
+            # From Matthieu Garcin. Hurst exponents and delampertized fractional Brownian
+            # motions. 2018. hal-01919754
+            # https://hal.archives-ouvertes.fr/hal-01919754/document and
+            # https://sdepy.readthedocs.io/en/v1.1.1/intro.html#id2 This uses a Wiener
+            # process as dW(t)
             @sdepy.integrate
             def rate_process(t, x, mu=2.0, k=0.1, sigma=1.0):
                 return {"dt": k * (mu - x), "dw": sigma}
@@ -569,17 +673,26 @@ class FPPProcess(Process):
 
         return amp, ta
 
-    @staticmethod
-    def fit_pulse(t, forcing, response):
-        # Shift removed. Not needed?
-        pulse, error = dm.RL_gauss_deconvolve(response, forcing, 600)
-        # pulse, error = dm.RL_gauss_deconvolve(response, forcing, 600, shift=None)
-        pulse = pulse.reshape((-1,))
-        pulse_fit = tools.optimize(t, np.copy(pulse), pen=False)
-        response_fit = fftconvolve(forcing, pulse_fit, mode="same")
-        return pulse, pulse_fit, response_fit, error
+    def create_realisation(
+        self, fit=True, ampta=False, full=False
+    ) -> Tuple[np.ndarray, ...]:
+        """Returns a realisation of the process with optional extra arrays.
 
-    def create_realisation(self, fit=True, ampta=False, full=False):
+        Parameters
+        ----------
+        fit: bool
+            Return the time series and extra arrays if True. The time axis will be the
+            first array, time series the last array, while the rest are arrival times,
+            amplitudes, pulse shape and forcing. Default is True.
+
+        Returns
+        -------
+        Tuple[np.ndarray, ...]
+            If fit, returns time axis, forcing, pulse, fitted pulse, fitted response
+            (temperature), error and original response; if full, returns time axis,
+            forcing, response, amplitudes and arrival times; if ampta, returns amplitudes
+            and arrival times; else, returns time axis, forcing and response
+        """
         # Beware that seeds may yield strange results!
         # Equal seeds give correlated amplitude and waiting times.
         # prev. good seeds: (20, 31)
@@ -620,7 +733,19 @@ class FPPProcess(Process):
             return amp, ta
         return t, forcing, response
 
-    def get_tw(self, parameter=None):
+    def get_tw(self, parameter: Optional[Tuple] = None) -> Tuple:
+        """Find waiting times.
+
+        Parameters
+        ----------
+        parameters: Optional[Tuple]
+            Time axis and time series realisation.
+
+        Returns
+        -------
+        Tuple
+            Returns a two-tuple of numpy arrays; waiting times and x-coordinates.
+        """
         if parameter is None:
             out = self.create_realisation(fit=False, ampta=True)
             ta = out[1]
@@ -701,7 +826,7 @@ if __name__ == "__main__":
         p.set_params(gamma=1.0, K=1000, kern=k, snr=0.0, tw=t, dt=0.01)
         p.plot_realisation("plot_psd")  # =True)
     p.set_params(gamma=1.0, kern="1-exp", snr=0.0, tw="tick")
-    p.create_ampta()
+    p.create_ampta("cox", "ou")
     p.plot_realisation("plot_all")
     p.plot_psd()
 

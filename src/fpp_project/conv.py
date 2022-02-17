@@ -19,7 +19,7 @@ plt.rcParams["axes.grid"] = True
 matplotlib.rcParams.update(
     {
         "text.usetex": True,
-        "font.family": "DejaVu Sans",
+        "font.family": "Times",
         "axes.unicode_minus": False,
         "pgf.texsystem": "pdflatex",
     }

@@ -1,5 +1,8 @@
+from typing import List
+
 import matplotlib.pyplot as plt
 import numpy as np
+import plastik
 import scipy.signal as ssi
 import uit_scripts.stat_analysis as sa
 from scipy.optimize import curve_fit
@@ -8,24 +11,9 @@ from uit_scripts.plotting import figure_defs as fd
 import fpp_project.utils.slf as slf
 import fpp_project.utils.tools as tools
 
-# import matplotlib.ticker as mticker
-# sys.path.append('/home/een023/Documents/work/FPP_SOC_Chaos/uit_scripts')
-# sys.path.append('/home/een023/resolve/uit_scripts')
-
 fd.set_rcparams_article_thickline(plt.rcParams)
 plt.rcParams["font.family"] = "DejaVu Sans"
 plt.rcParams["pgf.texsystem"] = "pdflatex"
-# plt.style.use('ggplot')
-# pu.figure_setup()
-
-# plt.rcParams['axes.grid'] = True
-# # Customize matplotlib
-# matplotlib.rcParams.update({
-#     'text.usetex': True,
-#     'font.family': 'DejaVu Sans',
-#     'axes.unicode_minus': False,
-#     'pgf.texsystem': 'pdflatex'
-# })
 
 data_path = "/home/een023/Documents/work/FPP_SOC_Chaos/report/data/"
 save_path = "/home/een023/Documents/work/FPP_SOC_Chaos/report/figures/"
@@ -52,8 +40,8 @@ def fpp_tw_dist(data: bool = True, save=False):
         dt = 1e-2
         N = int(1e7)
         snr = 0.0
-        fpps = [[], [], [], []]
-        corrs = [[], [], [], []]
+        fpps: List[List[np.ndarray]] = [[], [], [], []]
+        corrs: List[List[List[np.ndarray]]] = [[], [], [], []]
         for i, (r, tw) in enumerate(zip(rate, tw_distr)):
             for g in gamma:
                 p.set_params(
@@ -132,56 +120,30 @@ def fpp_tw_dist(data: bool = True, save=False):
     del fpp_c
     del fpp_t
 
-    lab = [fr"$\gamma = {g}$" for g in gamma]
+    lab = [rf"$\gamma = {g}$" for g in gamma]
     plt_type = "loglog"
     # y_scale = .4 in report
     # plt_type_c = "plot"
     # xlim_c = (-0.2, 0.2)
     # tools.ridge_plot_psd(fpp_vr, dt, xlabel='$ f $', ylabel='$ S $', labels=lab, figname=figs[0])
+    # fmt: off
     tools.ridge_plot(
-        TW_e,
-        "grid",
-        "dots",
-        xlabel="$ \\tau_\\mathrm{w} $",
-        plt_type=plt_type,
-        ylabel="$ P_{\\tau_{\\mathrm{w}}} $",
-        labels=lab,
-        figname=figs[0],
-        y_scale=0.6,
+        TW_e, "grid", "dots", xlabel="$ \\tau_\\mathrm{w} $", plt_type=plt_type,
+        ylabel="$ P_{\\tau_{\\mathrm{w}}} $", labels=lab, figname=figs[0], y_scale=0.6,
     )
     tools.ridge_plot(
-        TW_p,
-        "grid",
-        "dots",
-        xlabel="$ \\tau_\\mathrm{w} $",
-        plt_type=plt_type,
-        ylabel="$ P_{\\tau_{\\mathrm{w}}} $",
-        labels=lab,
-        figname=figs[1],
-        y_scale=0.6,
+        TW_p, "grid", "dots", xlabel="$ \\tau_\\mathrm{w} $", plt_type=plt_type,
+        ylabel="$ P_{\\tau_{\\mathrm{w}}} $", labels=lab, figname=figs[1], y_scale=0.6,
     )
     tools.ridge_plot(
-        TW_c,
-        "grid",
-        "dots",
-        xlabel="$ \\tau_\\mathrm{w} $",
-        plt_type=plt_type,
-        ylabel="$ P_{\\tau_{\\mathrm{w}}} $",
-        labels=lab,
-        figname=figs[2],
-        y_scale=0.6,
+        TW_c, "grid", "dots", xlabel="$ \\tau_\\mathrm{w} $", plt_type=plt_type,
+        ylabel="$ P_{\\tau_{\\mathrm{w}}} $", labels=lab, figname=figs[2], y_scale=0.6,
     )  # , xlim=(0, 40))
     tools.ridge_plot(
-        TW_t,
-        "grid",
-        "dots",
-        xlabel="$ \\tau_\\mathrm{w} $",
-        plt_type=plt_type,
-        ylabel="$ P_{\\tau_{\\mathrm{w}}} $",
-        labels=lab,
-        figname=figs[3],
-        y_scale=0.6,
+        TW_t, "grid", "dots", xlabel="$ \\tau_\\mathrm{w} $", plt_type=plt_type,
+        ylabel="$ P_{\\tau_{\\mathrm{w}}} $", labels=lab, figname=figs[3], y_scale=0.6,
     )  # , xlim=(0, 20))
+    # fmt: on
     # tools.ridge_plot(corr_e, 'grid', xlabel='$ \\tau_\mathrm{w} $', plt_type=plt_type_c,
     #                  ylabel='Correlate', labels=lab, figname=figs[4], xlim=xlim_c)
     # tools.ridge_plot(corr_p, 'grid', xlabel='$ \\tau_\mathrm{w} $', plt_type=plt_type_c,
@@ -338,7 +300,7 @@ def fpptw_sde_real(data=True, save=False):
             sde = f["sde"]
 
     plt.rcParams["lines.linewidth"] = 0.4
-    lab = [fr"$\gamma = {g}$" for g in gamma]
+    lab = [rf"$\gamma = {g}$" for g in gamma]
     tools.ridge_plot(fpp, xlabel="$ t $", ylabel=r"$\Phi$", labels=lab, figname=figs[0])
     tools.ridge_plot(sde, xlabel="$ t $", ylabel=r"$\Phi$", labels=lab, figname=figs[1])
 
@@ -366,7 +328,7 @@ def fpptw_sde_psd(data=True, save=False):
         fpp = f["fpp"]
         sde = f["sde"]
 
-    lab = [fr"$\gamma = {g}$" for g in gamma]
+    lab = [rf"$\gamma = {g}$" for g in gamma]
     tools.ridge_plot_psd(
         fpp, dt, xlabel="$ f $", ylabel="$ S $", labels=lab, figname=figs[0]
     )
@@ -407,13 +369,13 @@ def power_law_pulse(save=False):
 
         plt.figure(figs[0], figsize=(7, 5))
         plt.subplot(2, 2, i + 1)
-        plt.title(fr"$\gamma = {g}$")
+        plt.title(rf"$\gamma = {g}$")
         p.plot_realisation("plot_psd", parameter=s[-1], fs=dt, new_fig=False)
         # tools.psd(s[-1], new_fig=False)
 
         plt.figure(figs[1], figsize=(7, 5))
         plt.subplot(2, 2, i + 1)
-        plt.title(fr"$\gamma = {g}$")
+        plt.title(rf"$\gamma = {g}$")
         p.plot_realisation("plot_pdf", parameter=s[-1], new_fig=False)
         # tools.pdf(s[-1], new_fig=False)
 
@@ -483,7 +445,7 @@ def test_FPP(data=True, save=False):
     #     y, _, x = sa.distribution(c, 100)
     #     tw.insert(0, (x, y))
 
-    lab = [fr"$\gamma = {g}$" for g in gamma]
+    lab = [rf"$\gamma = {g}$" for g in gamma]
     # tools.ridge_plot(sig, xlabel='$ t $', ylabel='$ \Phi $',
     #                  labels=lab, figname='sig')
     # tools.ridge_plot(tw, xlabel='$ t $', ylabel='$ \Phi $', labels=lab, figname='tw', plt_type='semilogy')
@@ -598,9 +560,13 @@ def test_compare(data=True, save=False):
 
     lab = ["FPP", "SLE"][::-1]
     plt.rcParams["lines.linewidth"] = 0.4
-    tools.ridge_plot(
-        sig[::-1], xlabel="$ t $", ylabel=r"$ \Phi $", figname=figs[0], labels=lab
-    )
+    # tools.ridge_plot(
+    #     sig[::-1], xlabel="$ t $", ylabel=r"$ \Phi $", figname=figs[0], labels=lab
+    # )
+    r = plastik.Ridge(sig[::-1], "", xlabel="$t$", ylabel=r"$\Phi$")
+    r.main()
+    r.figure.number = figs[0]
+    r.bottom_axes.legend(r.lines, lab)
     plt.rcParams["lines.linewidth"] = 1.5
     lab = [
         f"FPP; $ \\tau_{{\\mathrm{{w}}, k}} \\sim\\,${tw_}",
@@ -620,7 +586,7 @@ def test_compare(data=True, save=False):
     plt.legend(lab, loc="lower left")
     g_str = filename[7:]
     g_str = g_str[0] + "." + g_str[1:] if g_str[0] == "0" else g_str
-    plt.text(2e-2, 1.6e-4, fr"$ \gamma={float(g_str)} $", size=13)
+    plt.text(2e-2, 1.6e-4, rf"$ \gamma={float(g_str)} $", size=13)
     # f = mticker.ScalarFormatter(useOffset=False, useMathText=True)
     # g = lambda x, _: "{}".format(f._formatSciNotation("%1.3e" % x))
     # fmt = mticker.FuncFormatter(g)
@@ -632,7 +598,7 @@ def test_compare(data=True, save=False):
         plt.text(
             x_p,
             y_p,
-            fr"$ \mathrm{{pow}} = {pp:2.2f} $",
+            rf"$ \mathrm{{pow}} = {pp:2.2f} $",
             ha="left",
             va="bottom",
             bbox=dict(facecolor="none", edgecolor="k", pad=1.0, ls=ls),
@@ -661,10 +627,10 @@ def test_compare(data=True, save=False):
 
 
 if __name__ == "__main__":
-    # fpp_tw_dist()
+    fpp_tw_dist()
     # fpp_tw_pareto(data=False)
     # fpptw_sde_real()
     # fpptw_sde_psd()
     # power_law_pulse()
     # test_FPP()
-    test_compare(data=False)
+    # test_compare(data=False)

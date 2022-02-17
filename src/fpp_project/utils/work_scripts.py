@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.optimize as sc_optimize
 import uit_scripts.stat_analysis as sa
-from scipy.optimize import curve_fit
 from uit_scripts.plotting import figure_defs as fd
 
 import fpp_project.utils.slf as slf
@@ -32,10 +32,10 @@ def fpp_example(data=True, save=False):
         gamma = 0.1
         snr = 0.0
         p.set_params(gamma=gamma, K=int(N * gamma * dt), dt=dt, snr=snr)
-        s = p.create_realisation(fit=False)
-        pulse = p.fit_pulse(s[0], s[1], s[2])[0]
+        s = p.create_realisation(fit=True)
+        pulse = p.fit_pulse(s[0], s[4], s[-1])[0]
 
-        np.savez(file, s=s, pulse=pulse)
+        # np.savez(file, s=s, pulse=pulse)
     else:
         print(f"Loading data from {file}")
         with np.load(file, allow_pickle=True) as f:
@@ -98,32 +98,11 @@ def amplitude_dist(data=True, save=False):
             amps = f["amps"]
 
     lab = [f"{a}" for a in amp]
-    tools.ridge_plot_psd(
-        data1,
-        dt,
-        "squeeze",
-        xlabel="$ f $",
-        ylabel="PSD",
-        labels=lab[:3],
-        figname=figs[0],
-    )
-    tools.ridge_plot_psd(
-        data2,
-        dt,
-        "squeeze",
-        xlabel="$ f $",
-        ylabel="PSD",
-        labels=lab[3:],
-        figname=figs[1],
-    )
-    tools.ridge_plot(
-        amps,
-        xlabel=r"$ \Phi $",
-        ylabel="PDF",
-        labels=lab,
-        figname=figs[2],
-        y_scale=0.64,
-    )
+    # fmt: off
+    tools.ridge_plot_psd(data1, dt, "squeeze", xlabel="$ f $", ylabel="PSD", labels=lab[:3], figname=figs[0])
+    tools.ridge_plot_psd(data2, dt, "squeeze", xlabel="$ f $", ylabel="PSD", labels=lab[3:], figname=figs[1])
+    tools.ridge_plot(amps, xlabel=r"$ \Phi $", ylabel="PDF", labels=lab, figname=figs[2], y_scale=0.64)
+    # fmt: on
 
     if save:
         for f in figs:
@@ -180,13 +159,9 @@ def fpp_sde_realisations(data=True, save=False):
             fpp = f["fpp"]
             sde = f["sde"]
 
-    lab = [fr"$\gamma = {g}$" for g in gamma]
-    tools.ridge_plot(
-        fpp, xlabel="$ t $", ylabel=r"$ \Phi $", labels=lab, figname=figs[0]
-    )
-    tools.ridge_plot(
-        sde, xlabel="$ t $", ylabel=r"$ \Phi $", labels=lab, figname=figs[1]
-    )
+    lab = [rf"$\gamma = {g}$" for g in gamma]
+    tools.ridge_plot(fpp, xlabel="$t$", ylabel=r"$\Phi$", labels=lab, figname=figs[0])
+    tools.ridge_plot(sde, xlabel="$t$", ylabel=r"$\Phi$", labels=lab, figname=figs[1])
 
     if save:
         for f in figs:
@@ -240,9 +215,9 @@ def fpp_sde_real_L(data=True, save=False):
             sde = f["sde"]
 
     plt.rcParams["lines.linewidth"] = 0.4
-    lab = [fr"$\gamma = {g}$" for g in gamma]
-    tools.ridge_plot(fpp, xlabel="$ t $", ylabel=r"$\Phi$", labels=lab, figname=figs[0])
-    tools.ridge_plot(sde, xlabel="$ t $", ylabel=r"$\Phi$", labels=lab, figname=figs[1])
+    lab = [rf"$\gamma = {g}$" for g in gamma]
+    tools.ridge_plot(fpp, xlabel="$t$", ylabel=r"$\Phi$", labels=lab, figname=figs[0])
+    tools.ridge_plot(sde, xlabel="$t$", ylabel=r"$\Phi$", labels=lab, figname=figs[1])
 
     if save:
         for f in figs:
@@ -290,13 +265,11 @@ def fpp_sde_psdpdf(data=True, save=False):
             fpp = f["fpp"]
             sde = f["sde"]
 
-    lab = [fr"$\gamma = {g}$" for g in gamma]
-    tools.ridge_plot_psd(
-        fpp, dt, "squeeze", xlabel="$ f $", ylabel="$ S $", labels=lab, figname=figs[0]
-    )
-    tools.ridge_plot_psd(
-        sde, dt, "squeeze", xlabel="$ f $", ylabel="$ S $", labels=lab, figname=figs[1]
-    )
+    lab = [rf"$\gamma = {g}$" for g in gamma]
+    # fmt: off
+    tools.ridge_plot_psd(fpp, dt, "squeeze", xlabel="$f$", ylabel="$S$", labels=lab, figname=figs[0])
+    tools.ridge_plot_psd(sde, dt, "squeeze", xlabel="$f$", ylabel="$S$", labels=lab, figname=figs[1])
+    # fmt: on
 
     if save:
         for f in figs:
@@ -405,13 +378,13 @@ def sde_tw(data=True, save=False):
         x1 = x[mask]
         y1 = y[mask]
         if i in (2, 3):
-            popt, _ = curve_fit(tools.exp_func, x1, y1)
+            popt, _ = sc_optimize.curve_fit(tools.exp_func, x1, y1)
             amp_exp.append((x, tools.exp_func(x, *popt)))
-            amp_fit.append(fr"$\mathrm{{exp}} = - {popt[1]:2.2f}$")
+            amp_fit.append(rf"$\mathrm{{exp}} = - {popt[1]:2.2f}$")
         else:
-            popt, _ = curve_fit(tools.pow_func, x1, y1)
+            popt, _ = sc_optimize.curve_fit(tools.pow_func, x1, y1)
             amp_exp.append((x, tools.pow_func(x, *popt)))
-            amp_fit.append(fr"$\mathrm{{pow}} = - {popt[1]:2.2f}$")
+            amp_fit.append(rf"$\mathrm{{pow}} = - {popt[1]:2.2f}$")
         y, _, x = sa.distribution(s, 71)
         TW.append((x, y))
         mask = (x > 2.7) & (x < 10)
@@ -419,16 +392,16 @@ def sde_tw(data=True, save=False):
         x1 = x[mask]
         y1 = y[mask]
         if i in (2, 3):
-            popt, _ = curve_fit(tools.exp_func, x1, y1)
+            popt, _ = sc_optimize.curve_fit(tools.exp_func, x1, y1)
             tw_exp.append((x, tools.exp_func(x, *popt)))
-            tw_fit.append(fr"$\mathrm{{exp}} = - {popt[1]:2.2f}$")
+            tw_fit.append(rf"$\mathrm{{exp}} = - {popt[1]:2.2f}$")
         else:
-            popt, _ = curve_fit(tools.pow_func, x1, y1)
+            popt, _ = sc_optimize.curve_fit(tools.pow_func, x1, y1)
             tw_exp.append((x, tools.pow_func(x, *popt)))
-            tw_fit.append(fr"$\mathrm{{pow}} = - {popt[1]:2.2f}$")
+            tw_fit.append(rf"$\mathrm{{pow}} = - {popt[1]:2.2f}$")
     # tw = TW
     amp = AMP
-    lab = [fr"$\gamma = {g}$" for g in gamma]
+    lab = [rf"$\gamma = {g}$" for g in gamma]
     # f0 = force[0][0]
     # f1 = force[0][1]
     # # f1[f1 != 0] = 1
@@ -524,16 +497,10 @@ def fpp_tw_real(data=True, save=False):
             fpp_v = f["fpp_v"]
 
     plt.rcParams["lines.linewidth"] = 0.4
-    lab = [fr"$\gamma = {g}$" for g in gamma]
-    tools.ridge_plot(
-        fpp_c, xlabel="$ t $", ylabel=r"$\Phi$", labels=lab, figname=figs[0]
-    )
-    tools.ridge_plot(
-        fpp_t, xlabel="$ t $", ylabel=r"$\Phi$", labels=lab, figname=figs[1]
-    )
-    tools.ridge_plot(
-        fpp_v, xlabel="$ t $", ylabel=r"$\Phi$", labels=lab, figname=figs[2]
-    )
+    lab = [rf"$\gamma = {g}$" for g in gamma]
+    tools.ridge_plot(fpp_c, xlabel="$t$", ylabel=r"$\Phi$", labels=lab, figname=figs[0])
+    tools.ridge_plot(fpp_t, xlabel="$t$", ylabel=r"$\Phi$", labels=lab, figname=figs[1])
+    tools.ridge_plot(fpp_v, xlabel="$t$", ylabel=r"$\Phi$", labels=lab, figname=figs[2])
 
     if save:
         for f in figs:
@@ -568,34 +535,12 @@ def fpp_tw_psd(save=False):
         fpp_t = f["fpp_t"]
         fpp_v = f["fpp_v"]
 
-    lab = [fr"$\gamma = {g}$" for g in gamma]
-    tools.ridge_plot_psd(
-        fpp_c,
-        dt,
-        "squeeze",
-        xlabel="$ f $",
-        ylabel="$ S $",
-        labels=lab,
-        figname=figs[0],
-    )
-    tools.ridge_plot_psd(
-        fpp_t,
-        dt,
-        "squeeze",
-        xlabel="$ f $",
-        ylabel="$ S $",
-        labels=lab,
-        figname=figs[1],
-    )
-    tools.ridge_plot_psd(
-        fpp_v,
-        dt,
-        "squeeze",
-        xlabel="$ f $",
-        ylabel="$ S $",
-        labels=lab,
-        figname=figs[2],
-    )
+    lab = [rf"$\gamma = {g}$" for g in gamma]
+    # fmt: off
+    tools.ridge_plot_psd(fpp_c, dt, "squeeze", xlabel="$f$", ylabel="$S$", labels=lab, figname=figs[0])
+    tools.ridge_plot_psd(fpp_t, dt, "squeeze", xlabel="$f$", ylabel="$S$", labels=lab, figname=figs[1])
+    tools.ridge_plot_psd(fpp_v, dt, "squeeze", xlabel="$f$", ylabel="$S$", labels=lab, figname=figs[2])
+    # fmt: on
 
     if save:
         for f in figs:
@@ -617,14 +562,14 @@ def fpp_tw_psd(save=False):
 
 
 if __name__ == "__main__":
-    fpp_example()  # 1
-    amplitude_dist()  # 2
-    fpp_sde_realisations()  # 3
-    fpp_sde_real_L()  # 4
-    fpp_sde_psdpdf()  # 5
-    sde_tw()  # 6
+    # fpp_example(data=False)  # 1
+    # amplitude_dist()  # 2
+    # fpp_sde_realisations()  # 3
+    # fpp_sde_real_L()  # 4
+    # fpp_sde_psdpdf()  # 5
+    # sde_tw()  # 6
     # Figure 7 is created in slf.py
-    fpp_tw_real()  # 8
+    # fpp_tw_real()  # 8
     fpp_tw_psd()  # 9
     # fpp_tw_dist(data=False)
     # fpp_tw_cox()
